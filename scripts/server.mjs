@@ -72,13 +72,13 @@ export function startStaticServer({ root, port = 0, host = "127.0.0.1" }) {
     server.on("error", reject);
     server.listen(port, host, () => {
       const address = server.address();
-      const actualPort = typeof address === "object" && address ? address.port : port;
+      const actualPort =
+        typeof address === "object" && address ? address.port : port;
       resolve({
         server,
         port: actualPort,
         url: `http://${host}:${actualPort}`,
-        close: () =>
-          new Promise((res) => server.close(() => res(undefined))),
+        close: () => new Promise((res) => server.close(() => res(undefined))),
       });
     });
   });
