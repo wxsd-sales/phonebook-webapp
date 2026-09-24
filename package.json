@@ -1,9 +1,9 @@
 {
-  "name": "my-macro",
+  "name": "phonebook-webapp",
   "version": "1.0.0",
-  "description": "One sentence description of what this macro does.",
+  "description": "Example phonebook web app for Cisco Collaboration Devices",
   "license": "MIT",
-  "author": "",
+  "author": "William Mills",
   "type": "module",
   "main": "macros/main.js",
   "scripts": {

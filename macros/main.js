@@ -13,8 +13,8 @@ import xapi from "xapi";
  */
 
 // CONFIG:start
-const MACRO_NAME = "my-macro";
-const WEBAPP_URL = "https://wxsd-sales.github.io/my-macro/webapp/";
+const MACRO_NAME = "phonebook-webapp";
+const WEBAPP_URL = "https://wxsd-sales.github.io/phonebook-webapp/webapp/";
 // CONFIG:end
 
 const PANEL_ID = `${MACRO_NAME}-open`;

@@ -1,10 +1,10 @@
 {
   "$schema": "./project.config.schema.json",
-  "name": "my-macro",
-  "title": "My Macro",
-  "description": "One sentence description of what this macro does.",
-  "author": "",
+  "name": "phonebook-webapp",
+  "title": "Phonebook Web App",
+  "description": "Example phonebook web app for Cisco Collaboration Devices",
+  "author": "William Mills",
   "org": "wxsd-sales",
-  "repo": "my-macro",
+  "repo": "phonebook-webapp",
   "webapp": true
 }
