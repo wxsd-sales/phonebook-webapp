@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Apply the Momentum Webex theme before first paint to avoid a flash.
+      // A "#theme=light|dark" hash forces a theme (used by on-device WebViews);
+      // otherwise the OS colour-scheme preference is followed.
+      (function initMomentumTheme() {
+        const getHashTheme = () => {
+          const raw = window.location.hash.startsWith("#")
+            ? window.location.hash.slice(1)
+            : window.location.hash;
+          if (!raw) return null;
+          const theme = new URLSearchParams(raw).get("theme");
+          return theme === "light" || theme === "dark" ? theme : null;
+        };
+
+        const apply = () => {
+          const forcedTheme = getHashTheme();
+          const dark = forcedTheme
+            ? forcedTheme === "dark"
+            : window.matchMedia("(prefers-color-scheme: dark)").matches;
+          const root = document.documentElement;
+          root.classList.remove(
+            "mds-theme-stable-lightWebex",
+            "mds-theme-stable-darkWebex",
+          );
+          root.classList.add(
+            dark ? "mds-theme-stable-darkWebex" : "mds-theme-stable-lightWebex",
+          );
+          root.style.colorScheme = dark ? "dark" : "light";
+        };
+
+        apply();
+        window.addEventListener("hashchange", apply);
+        window
+          .matchMedia("(prefers-color-scheme: dark)")
+          .addEventListener("change", () => {
+            if (!getHashTheme()) apply();
+          });
+      })();
+    </script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@momentum-design/icons@0.54.0/dist/data/MomentumFontIcons.css"
+      integrity="sha384-cRTwUMmzKBtfI4txd/iehWhZp7TowC6EHDTTfeR4fA88pF5oezPFRmSCub32x7JR"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@momentum-design/tokens@0.10.4/dist/css/theme/webex/light-stable.css"
+      integrity="sha384-aHuoM9vQGc4bIdjh/+QTsoAEtH5+fnRhLomr3VcTcFxTrheFiGnt26SoPv05oTWI"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@momentum-design/tokens@0.10.4/dist/css/theme/webex/dark-stable.css"
+      integrity="sha384-xo4f17YKVYq4xv2I3xxGoS+l3GhukPTuhpQTP7FT+M0nq9gCMQkzpohl5DJo6Zom"
+      crossorigin="anonymous"
+    />
+    <title>My Macro</title>
+    <!-- Generated from project.config.json by scripts/apply-config.mjs. -->
+    <script src="app-config.js"></script>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="app-header__brand">
+        <span class="app-header__product" id="app-product"
+          >Configuration Wizard</span
+        >
+      </div>
+      <div class="app-header__actions">
+        <a
+          class="source-link"
+          id="source-link"
+          href="https://github.com/wxsd-sales"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="View source code on GitHub"
+          title="View source code on GitHub"
+        >
+          <span class="source-link__icon" aria-hidden="true"></span>
+        </a>
+        <div class="theme-select" id="theme-select" data-open="false">
+          <button
+            id="theme-select-button"
+            class="secondary-button theme-select-button"
+            type="button"
+            aria-haspopup="listbox"
+            aria-expanded="false"
+          >
+            <span
+              id="theme-select-current-icon"
+              class="icon icon-laptop-regular theme-select-current-icon"
+              aria-hidden="true"
+            ></span>
+            <span id="theme-select-label">System</span>
+            <span
+              class="icon icon-arrow-triangle-down-filled theme-select-caret"
+              aria-hidden="true"
+            ></span>
+          </button>
+          <div
+            id="theme-select-menu"
+            class="theme-select-menu"
+            role="listbox"
+            aria-label="Theme"
+            hidden
+          >
+            <button
+              class="theme-select-option"
+              type="button"
+              role="option"
+              data-theme-choice="system"
+              aria-selected="true"
+            >
+              <span class="icon icon-laptop-regular" aria-hidden="true"></span>
+              <span>System</span>
+            </button>
+            <button
+              class="theme-select-option"
+              type="button"
+              role="option"
+              data-theme-choice="light"
+              aria-selected="false"
+            >
+              <span
+                class="icon icon-brightness-high-filled"
+                aria-hidden="true"
+              ></span>
+              <span>Light</span>
+            </button>
+            <button
+              class="theme-select-option"
+              type="button"
+              role="option"
+              data-theme-choice="dark"
+              aria-selected="false"
+            >
+              <span
+                class="icon icon-quiet-hours-presence-filled"
+                aria-hidden="true"
+              ></span>
+              <span>Dark</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <div class="app-content">
+        <div class="tab-bar" role="tablist" aria-label="Configuration steps">
+          <button
+            class="tab"
+            id="tab-general"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            aria-controls="general"
+            data-tab-target="general"
+          >
+            <span
+              class="icon icon-adjust-horizontal-regular"
+              aria-hidden="true"
+            ></span>
+            <span class="tab__label">General</span>
+          </button>
+          <button
+            class="tab"
+            id="tab-export"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="export"
+            tabindex="-1"
+            data-tab-target="export"
+          >
+            <span class="icon icon-save-regular" aria-hidden="true"></span>
+            <span class="tab__label">Export</span>
+          </button>
+        </div>
+
+        <div class="page-stack" aria-live="polite">
+          <!-- General -->
+          <section
+            class="webapp-function"
+            id="general"
+            role="tabpanel"
+            aria-labelledby="tab-general"
+            tabindex="0"
+          >
+            <h2>Macro Settings</h2>
+            <p>
+              Configure the macro, then open the <strong>Export</strong> tab to
+              copy the generated <code>CONFIG</code> block into
+              <code>macros/main.js</code>.
+            </p>
+
+            <form class="config-form" id="wizard-form" autocomplete="off">
+              <div class="field">
+                <label class="field__label" for="button-name"
+                  >Button name</label
+                >
+                <input
+                  class="field__input"
+                  type="text"
+                  id="button-name"
+                  name="button-name"
+                  placeholder="my-macro"
+                />
+                <span class="field__hint"
+                  >Shown on the device home screen and used as the WebView
+                  title.</span
+                >
+              </div>
+              <div class="field">
+                <label class="field__label" for="webapp-url">Web app URL</label>
+                <input
+                  class="field__input"
+                  type="url"
+                  id="webapp-url"
+                  name="webapp-url"
+                  placeholder="https://org.github.io/repo/webapp/"
+                />
+                <span class="field__hint"
+                  >The page the macro opens in an on-device WebView.</span
+                >
+              </div>
+            </form>
+          </section>
+
+          <!-- Export -->
+          <section
+            class="webapp-function"
+            id="export"
+            role="tabpanel"
+            aria-labelledby="tab-export"
+            tabindex="0"
+            hidden
+          >
+            <h2>Macro Config</h2>
+            <p>
+              Copy this block and paste it between the
+              <code>// CONFIG:start</code> and
+              <code>// CONFIG:end</code> markers in <code>macros/main.js</code>.
+            </p>
+
+            <div class="code-output">
+              <div class="code-output__header">
+                <span class="field__label">Generated config</span>
+                <div class="code-output__actions">
+                  <button
+                    id="download-button"
+                    type="button"
+                    class="icon-button icon-button--with-label secondary-button"
+                  >
+                    <span
+                      class="icon icon-download-bold"
+                      aria-hidden="true"
+                    ></span>
+                    <span class="icon-button__label">Download macro</span>
+                  </button>
+                  <button
+                    id="copy-button"
+                    type="button"
+                    class="icon-button icon-button--with-label secondary-button"
+                  >
+                    <span class="icon icon-copy-bold" aria-hidden="true"></span>
+                    <span class="icon-button__label">Copy config</span>
+                  </button>
+                </div>
+              </div>
+              <pre class="code-output__command"><code id="output"></code></pre>
+              <p
+                class="export-status"
+                id="export-status"
+                role="status"
+                aria-live="polite"
+              ></p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <script type="module" src="wizard.js"></script>
+  </body>
+</html>

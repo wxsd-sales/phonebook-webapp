@@ -1,0 +1,40 @@
+{
+  "name": "my-macro",
+  "version": "1.0.0",
+  "description": "One sentence description of what this macro does.",
+  "license": "MIT",
+  "author": "",
+  "type": "module",
+  "main": "macros/main.js",
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "apply-config": "node scripts/apply-config.mjs",
+    "serve": "node scripts/serve.mjs",
+    "screenshots": "node scripts/screenshot.mjs",
+    "deploy:macro": "node scripts/deploy-macro.mjs",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watchAll --runInBand"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^xapi$": "jest-mock-xapi"
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.8.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.9.0",
+    "jest": "^30.4.2",
+    "jest-mock-xapi": "^1.0.6",
+    "jsxapi": "^6.0.0",
+    "prettier": "^3.9.6"
+  }
+}

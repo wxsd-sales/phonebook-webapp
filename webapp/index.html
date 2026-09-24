@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Apply the Momentum Webex theme before first paint. On-device WebViews
+      // open this page with a "#theme=light|dark" hash; otherwise follow the OS.
+      (function initMomentumTheme() {
+        const getHashTheme = () => {
+          const raw = window.location.hash.startsWith("#")
+            ? window.location.hash.slice(1)
+            : window.location.hash;
+          if (!raw) return null;
+          const theme = new URLSearchParams(raw).get("theme");
+          return theme === "light" || theme === "dark" ? theme : null;
+        };
+
+        const apply = () => {
+          const forcedTheme = getHashTheme();
+          const dark = forcedTheme
+            ? forcedTheme === "dark"
+            : window.matchMedia("(prefers-color-scheme: dark)").matches;
+          const root = document.documentElement;
+          root.classList.remove(
+            "mds-theme-stable-lightWebex",
+            "mds-theme-stable-darkWebex",
+          );
+          root.classList.add(
+            dark ? "mds-theme-stable-darkWebex" : "mds-theme-stable-lightWebex",
+          );
+          root.style.colorScheme = dark ? "dark" : "light";
+        };
+
+        apply();
+        window.addEventListener("hashchange", apply);
+        window
+          .matchMedia("(prefers-color-scheme: dark)")
+          .addEventListener("change", () => {
+            if (!getHashTheme()) apply();
+          });
+      })();
+    </script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@momentum-design/icons@0.54.0/dist/data/MomentumFontIcons.css"
+      integrity="sha384-cRTwUMmzKBtfI4txd/iehWhZp7TowC6EHDTTfeR4fA88pF5oezPFRmSCub32x7JR"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@momentum-design/tokens@0.10.4/dist/css/theme/webex/light-stable.css"
+      integrity="sha384-aHuoM9vQGc4bIdjh/+QTsoAEtH5+fnRhLomr3VcTcFxTrheFiGnt26SoPv05oTWI"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@momentum-design/tokens@0.10.4/dist/css/theme/webex/dark-stable.css"
+      integrity="sha384-xo4f17YKVYq4xv2I3xxGoS+l3GhukPTuhpQTP7FT+M0nq9gCMQkzpohl5DJo6Zom"
+      crossorigin="anonymous"
+    />
+    <title>My Macro</title>
+    <!-- Generated from project.config.json by scripts/apply-config.mjs. -->
+    <script src="app-config.js"></script>
+    <link rel="stylesheet" href="../wizard/styles.css" />
+    <link rel="icon" href="../wizard/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="app-header__brand">
+        <span class="app-header__product" id="app-product">Web App</span>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <div class="app-content">
+        <div class="page-stack">
+          <section class="webapp-function">
+            <h2>Advanced Features</h2>
+            <p>
+              This page is opened by the macro in an on-device WebView to
+              provide advanced features beyond the native UI extensions. Replace
+              this placeholder with your app.
+            </p>
+            <p class="field__hint">
+              Loaded from <code id="base-url">GitHub Pages</code>
+            </p>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <script type="module">
+      const config = window.APP_CONFIG ?? {};
+      if (config.title) {
+        document.getElementById("app-product").textContent = config.title;
+        document.title = config.title;
+      }
+      if (config.webappUrl) {
+        document.getElementById("base-url").textContent = config.webappUrl;
+      }
+    </script>
+  </body>
+</html>

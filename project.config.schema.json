@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://wxsd-sales.github.io/macro-template/project.config.schema.json",
+  "title": "Macro template project configuration",
+  "description": "Single source of truth consumed by scripts/apply-config.mjs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "title", "org", "repo"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Path or URL to this JSON schema (enables editor validation)."
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Package/macro name in kebab-case."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable display title."
+    },
+    "description": {
+      "type": "string",
+      "description": "One-sentence description of the macro."
+    },
+    "author": {
+      "type": "string",
+      "description": "Author name (may be empty)."
+    },
+    "org": {
+      "type": "string",
+      "minLength": 1,
+      "description": "GitHub organisation or user that hosts the repository."
+    },
+    "repo": {
+      "type": "string",
+      "minLength": 1,
+      "description": "GitHub repository name (used for the Pages base URL)."
+    },
+    "webapp": {
+      "type": "boolean",
+      "description": "Whether to build/deploy the optional advanced web app.",
+      "default": true
+    }
+  }
+}

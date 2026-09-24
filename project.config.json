@@ -1,0 +1,10 @@
+{
+  "$schema": "./project.config.schema.json",
+  "name": "my-macro",
+  "title": "My Macro",
+  "description": "One sentence description of what this macro does.",
+  "author": "",
+  "org": "wxsd-sales",
+  "repo": "my-macro",
+  "webapp": true
+}

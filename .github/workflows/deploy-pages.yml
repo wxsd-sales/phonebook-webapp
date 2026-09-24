@@ -1,0 +1,65 @@
+name: Deploy Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Assemble site
+        run: |
+          mkdir -p _site/wizard
+          cp -r wizard/. _site/wizard/
+          # Publish the macro source so the wizard's "Download macro" action can
+          # fetch it (../macros/main.js) on the live site.
+          if [ -d macros ]; then
+            mkdir -p _site/macros
+            cp -r macros/. _site/macros/
+          fi
+          # Include the web app unless project.config.json disables it.
+          INCLUDE_WEBAPP=true
+          if [ -f project.config.json ]; then
+            if node --input-type=commonjs -e "process.exit(require('./project.config.json').webapp===false?1:0)"; then
+              INCLUDE_WEBAPP=true
+            else
+              INCLUDE_WEBAPP=false
+            fi
+          fi
+          if [ "$INCLUDE_WEBAPP" = "true" ] && [ -d webapp ]; then
+            mkdir -p _site/webapp
+            cp -r webapp/. _site/webapp/
+          fi
+          # Root landing page redirects visitors to the wizard.
+          {
+            echo '<!DOCTYPE html>'
+            echo '<meta charset="utf-8" />'
+            echo '<meta http-equiv="refresh" content="0; url=./wizard/" />'
+            echo '<title>Redirecting</title>'
+            echo '<a href="./wizard/">Continue to the configuration wizard</a>'
+          } > _site/index.html
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
