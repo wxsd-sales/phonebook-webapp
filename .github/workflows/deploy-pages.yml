@@ -16,6 +16,8 @@ concurrency:
 
 jobs:
   build:
+    if: ${{ !github.event.repository.is_template && github.event.repository.visibility == 'public' }}
+
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4

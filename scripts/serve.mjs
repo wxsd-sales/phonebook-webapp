@@ -1,4 +1,4 @@
-import { startStaticServer } from "./lib/server.mjs";
+import { startStaticServer } from "./server.mjs";
 
 const root = process.cwd();
 const port = Number(process.env.PORT) || 8080;

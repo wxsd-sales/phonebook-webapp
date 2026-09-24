@@ -12,7 +12,28 @@ permissions:
   contents: write
 
 jobs:
+  check-branch-protection:
+    if: ${{ !github.event.repository.is_template }}
+    runs-on: ubuntu-latest
+    outputs:
+      protected: ${{ steps.check.outputs.protected }}
+    steps:
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Default to "protected" on any lookup failure so we fail safe
+          # (skip the auto-push) rather than risk a rejected push later.
+          protected=$(gh api "repos/${{ github.repository }}/branches/${{ github.ref_name }}" --jq '.protected' 2>/dev/null || echo "true")
+          echo "Branch ${{ github.ref_name }} protected: $protected"
+          echo "protected=$protected" >> "$GITHUB_OUTPUT"
+
   screenshots:
+    needs: check-branch-protection
+    if: >-
+      ${{ !github.event.repository.is_template &&
+        needs.check-branch-protection.result == 'success' &&
+        needs.check-branch-protection.outputs.protected != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
