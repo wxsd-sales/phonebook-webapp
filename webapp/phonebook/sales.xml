@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CiscoIPPhoneDirectory>
+  <Title>Sales Team</Title>
+  <Prompt>Select an entry, then Dial or Edit Dial</Prompt>
+  <DirectoryEntry>
+    <Name>Sales - General</Name>
+    <Telephone>3000</Telephone>
+  </DirectoryEntry>
+  <DirectoryEntry>
+    <Name>Sales - Americas</Name>
+    <Telephone>3001</Telephone>
+  </DirectoryEntry>
+  <DirectoryEntry>
+    <Name>Sales - EMEA</Name>
+    <Telephone>3002</Telephone>
+  </DirectoryEntry>
+</CiscoIPPhoneDirectory>

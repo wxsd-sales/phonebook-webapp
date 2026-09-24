@@ -1,0 +1,228 @@
+/*
+ * Look and feel of a Cisco IP phone XML directory app: a black screen, a
+ * slim title/prompt bar, a scrollable entry list, and a bottom softkey row.
+ */
+
+:root {
+  --phone-bg: #000;
+  --phone-text: #eef2f5;
+  --phone-text-dim: #9aa5ad;
+  --phone-accent: #00bceb;
+  --phone-row-border: #202428;
+  --phone-row-selected: #0b3d4d;
+  --phone-softkey-bg: #1c1f22;
+  --phone-softkey-active: #2a2e33;
+  --phone-danger: #e2554f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background: var(--phone-bg);
+  color: var(--phone-text);
+  font-family:
+    "Helvetica Neue", Helvetica, Arial, ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.phone {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  height: 100vh;
+}
+
+/* Title bar */
+.phone-titlebar {
+  padding: 14px 20px 4px;
+  background: var(--phone-bg);
+}
+
+.phone-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.phone-prompt {
+  margin: 2px 0 0;
+  color: var(--phone-text-dim);
+  font-size: 13px;
+}
+
+.phone-status {
+  padding: 0 20px 10px;
+  color: var(--phone-text-dim);
+  font-size: 13px;
+  min-height: 18px;
+}
+
+.phone-status[data-kind="error"] {
+  color: var(--phone-danger);
+}
+
+/* Entry list */
+.phone-list {
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.phone-entry {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--phone-row-border);
+  cursor: pointer;
+}
+
+.phone-entry[aria-selected="true"] {
+  background: var(--phone-row-selected);
+}
+
+.phone-entry:focus-visible {
+  outline: 2px solid var(--phone-accent);
+  outline-offset: -2px;
+}
+
+.phone-entry__name {
+  overflow: hidden;
+  font-size: 17px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.phone-entry__detail {
+  flex-shrink: 0;
+  color: var(--phone-text-dim);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.phone-entry--folder .phone-entry__detail {
+  color: var(--phone-accent);
+}
+
+.phone-empty {
+  padding: 24px 20px;
+  color: var(--phone-text-dim);
+}
+
+/* Softkeys */
+.phone-softkeys {
+  display: flex;
+  gap: 1px;
+  background: var(--phone-row-border);
+}
+
+.phone-softkey {
+  flex: 1;
+  min-height: 52px;
+  border: 0;
+  border-radius: 0;
+  background: var(--phone-softkey-bg);
+  color: var(--phone-text);
+  font: inherit;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.phone-softkey:disabled {
+  color: var(--phone-text-dim);
+  opacity: 0.5;
+}
+
+.phone-softkey:not(:disabled):active,
+.phone-softkey:not(:disabled):hover {
+  background: var(--phone-softkey-active);
+}
+
+.phone-softkey--primary {
+  color: var(--phone-accent);
+}
+
+/* Dial-edit overlay */
+.phone-edit {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: var(--phone-bg);
+}
+
+.phone-edit-title {
+  margin: 0;
+  padding: 16px 20px 8px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.phone-edit-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 20px;
+}
+
+.phone-edit-label {
+  color: var(--phone-text-dim);
+  font-size: 13px;
+}
+
+.phone-edit-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--phone-row-border);
+  border-radius: 6px;
+  background: #0c0e10;
+  color: var(--phone-text);
+  font: inherit;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+}
+
+.phone-edit-input:focus {
+  outline: none;
+  border-color: var(--phone-accent);
+}
+
+/* Dialing overlay */
+.phone-dialing {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  background: var(--phone-bg);
+  text-align: center;
+}
+
+.phone-dialing__number {
+  font-size: 28px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.phone-dialing__label {
+  color: var(--phone-text-dim);
+  font-size: 14px;
+}

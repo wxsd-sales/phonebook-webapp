@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Root directory file for the phone book web app, in the style of a Cisco IP
+  Phone Services "CiscoIPPhoneDirectory" object.
+
+  Each <DirectoryEntry> is either:
+    - a callable entry: <Name> plus <Telephone>
+    - a folder: <Name> plus <URL> pointing at another directory XML file,
+      fetched relative to this file when the entry is opened
+-->
+<CiscoIPPhoneDirectory>
+  <Title>Company Directory</Title>
+  <Prompt>Select an entry, then Dial or Edit Dial</Prompt>
+  <DirectoryEntry>
+    <Name>Reception</Name>
+    <Telephone>1000</Telephone>
+  </DirectoryEntry>
+  <DirectoryEntry>
+    <Name>Help Desk</Name>
+    <Telephone>2000</Telephone>
+  </DirectoryEntry>
+  <DirectoryEntry>
+    <Name>Facilities</Name>
+    <Telephone>2100</Telephone>
+  </DirectoryEntry>
+  <DirectoryEntry>
+    <Name>Security</Name>
+    <Telephone>2900</Telephone>
+  </DirectoryEntry>
+  <DirectoryEntry>
+    <Name>Sales Team</Name>
+    <URL>sales.xml</URL>
+  </DirectoryEntry>
+</CiscoIPPhoneDirectory>
