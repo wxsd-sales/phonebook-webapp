@@ -1,6 +1,8 @@
 /*
  * Look and feel of a Cisco IP phone XML directory app: a black screen, a
- * slim title/prompt bar, a scrollable entry list, and a bottom softkey row.
+ * centered title with a back button, a bordered card holding the entry
+ * list, and pill-shaped action buttons. Sized for a Room Navigator
+ * controller / OSD modal WebView (~1079x679).
  */
 
 :root {
@@ -8,10 +10,10 @@
   --phone-text: #eef2f5;
   --phone-text-dim: #9aa5ad;
   --phone-accent: #00bceb;
-  --phone-row-border: #202428;
-  --phone-row-selected: #0b3d4d;
-  --phone-softkey-bg: #1c1f22;
-  --phone-softkey-active: #2a2e33;
+  --phone-border: rgba(255, 255, 255, 0.22);
+  --phone-border-strong: rgba(255, 255, 255, 0.4);
+  --phone-fill-hover: rgba(255, 255, 255, 0.08);
+  --phone-fill-active: rgba(255, 255, 255, 0.14);
   --phone-danger: #e2554f;
 }
 
@@ -35,41 +37,86 @@ body {
   color: var(--phone-text);
   font-family:
     "Helvetica Neue", Helvetica, Arial, ui-sans-serif, system-ui, sans-serif;
-  font-size: 16px;
+  font-size: 18px;
   -webkit-user-select: none;
   user-select: none;
 }
 
 .phone {
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto 1fr;
+  gap: 20px;
   height: 100vh;
+  padding: 24px 40px 32px;
 }
 
-/* Title bar */
-.phone-titlebar {
-  padding: 14px 20px 4px;
-  background: var(--phone-bg);
+/* Header: back button pinned left, title always centered */
+.phone-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
 }
 
 .phone-title {
   margin: 0;
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 28px;
+  font-weight: 700;
   letter-spacing: 0.01em;
+  text-align: center;
+}
+
+.phone-icon-button {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 1.5px solid var(--phone-border-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--phone-text);
+  transform: translateY(-50%);
+}
+
+.phone-icon-button svg {
+  width: 24px;
+  height: 24px;
+}
+
+.phone-icon-button:hover,
+.phone-icon-button:active {
+  background: var(--phone-fill-hover);
+}
+
+/* Card */
+.phone-card {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  min-height: 0;
+  padding: 28px 32px 24px;
+  border: 1.5px solid var(--phone-border);
+  border-radius: 24px;
 }
 
 .phone-prompt {
-  margin: 2px 0 0;
+  margin: 0 0 12px;
   color: var(--phone-text-dim);
-  font-size: 13px;
+  font-size: 18px;
+  text-align: center;
 }
 
 .phone-status {
-  padding: 0 20px 10px;
+  margin: 0 0 8px;
+  min-height: 22px;
   color: var(--phone-text-dim);
-  font-size: 13px;
-  min-height: 18px;
+  font-size: 15px;
+  text-align: center;
 }
 
 .phone-status[data-kind="error"] {
@@ -79,150 +126,223 @@ body {
 /* Entry list */
 .phone-list {
   margin: 0;
-  padding: 0;
+  padding: 4px 12px 4px 0;
   overflow-y: auto;
   list-style: none;
 }
 
+.phone-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.phone-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.phone-list::-webkit-scrollbar-thumb {
+  background: var(--phone-border-strong);
+  border-radius: 3px;
+}
+
 .phone-entry {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--phone-row-border);
-  cursor: pointer;
+  gap: 20px;
+  padding: 18px 4px;
 }
 
-.phone-entry[aria-selected="true"] {
-  background: var(--phone-row-selected);
-}
-
-.phone-entry:focus-visible {
-  outline: 2px solid var(--phone-accent);
-  outline-offset: -2px;
+.phone-entry__info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 
 .phone-entry__name {
   overflow: hidden;
-  font-size: 17px;
+  font-size: 22px;
+  font-weight: 600;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.phone-entry__detail {
-  flex-shrink: 0;
+.phone-entry__number {
   color: var(--phone-text-dim);
-  font-size: 15px;
+  font-size: 16px;
   font-variant-numeric: tabular-nums;
 }
 
-.phone-entry--folder .phone-entry__detail {
-  color: var(--phone-accent);
+.phone-entry__actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 12px;
 }
 
 .phone-empty {
-  padding: 24px 20px;
+  padding: 24px 4px;
   color: var(--phone-text-dim);
+  font-size: 18px;
+  text-align: center;
 }
 
-/* Softkeys */
-.phone-softkeys {
-  display: flex;
-  gap: 1px;
-  background: var(--phone-row-border);
-}
-
-.phone-softkey {
-  flex: 1;
-  min-height: 52px;
-  border: 0;
-  border-radius: 0;
-  background: var(--phone-softkey-bg);
+/* Pill buttons */
+.phone-pill {
+  min-width: 96px;
+  min-height: 44px;
+  padding: 0 22px;
+  border: 1.5px solid var(--phone-border-strong);
+  border-radius: 999px;
+  background: transparent;
   color: var(--phone-text);
   font: inherit;
+  font-size: 17px;
   font-weight: 600;
-  font-size: 15px;
 }
 
-.phone-softkey:disabled {
+.phone-pill:hover,
+.phone-pill:active {
+  background: var(--phone-fill-hover);
+}
+
+.phone-pill:disabled {
   color: var(--phone-text-dim);
-  opacity: 0.5;
+  border-color: var(--phone-border);
+  opacity: 0.6;
 }
 
-.phone-softkey:not(:disabled):active,
-.phone-softkey:not(:disabled):hover {
-  background: var(--phone-softkey-active);
-}
-
-.phone-softkey--primary {
+.phone-pill--primary {
+  border-color: var(--phone-accent);
   color: var(--phone-accent);
 }
 
-/* Dial-edit overlay */
-.phone-edit {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  background: var(--phone-bg);
-}
-
-.phone-edit-title {
-  margin: 0;
-  padding: 16px 20px 8px;
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.phone-edit-body {
+.phone-card-footer {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px 20px;
+  justify-content: center;
+  padding-top: 20px;
 }
 
-.phone-edit-label {
-  color: var(--phone-text-dim);
-  font-size: 13px;
-}
-
-.phone-edit-input {
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px solid var(--phone-row-border);
-  border-radius: 6px;
-  background: #0c0e10;
-  color: var(--phone-text);
-  font: inherit;
-  font-size: 22px;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.03em;
-}
-
-.phone-edit-input:focus {
-  outline: none;
-  border-color: var(--phone-accent);
-}
-
-/* Dialing overlay */
-.phone-dialing {
+/* Confirm/edit/dialing modal - styled after the RoomOS SIP protocol-handler
+   dial-confirmation prompt: a light card floating over a dimmed backdrop. */
+.modal-backdrop {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
-  gap: 8px;
-  background: var(--phone-bg);
-  text-align: center;
+  background: rgba(30, 30, 32, 0.82);
 }
 
-.phone-dialing__number {
-  font-size: 28px;
-  font-weight: 600;
+.modal-card {
+  position: relative;
+  width: min(420px, 86vw);
+  padding: 28px 32px 32px;
+  border-radius: 20px;
+  background: #fff;
+  color: #1a1a1a;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+}
+
+.modal-back {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #ececec;
+  color: #1a1a1a;
+}
+
+.modal-back svg {
+  width: 22px;
+  height: 22px;
+}
+
+.modal-back:hover,
+.modal-back:active {
+  background: #dedede;
+}
+
+.modal-info {
+  margin-top: 44px;
+}
+
+.modal-name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.modal-number {
+  margin: 4px 0 0;
+  color: #6b6f76;
+  font-size: 17px;
   font-variant-numeric: tabular-nums;
 }
 
-.phone-dialing__label {
-  color: var(--phone-text-dim);
-  font-size: 14px;
+.modal-input {
+  width: 100%;
+  margin-top: 44px;
+  padding: 14px 16px;
+  border: 1.5px solid #d6d8db;
+  border-radius: 12px;
+  background: #f5f6f7;
+  color: #1a1a1a;
+  font: inherit;
+  font-size: 24px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+}
+
+.modal-input:focus {
+  outline: none;
+  border-color: #2f855a;
+}
+
+/* Shown in place of .modal-input once dialing starts, so the edited number
+   reads as plain, no-longer-editable text instead of a live input field. */
+.modal-input-value {
+  margin: 44px 0 0;
+  font-size: 24px;
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+}
+
+.modal-call {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 24px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 999px;
+  background: #2f855a;
+  color: #fff;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.modal-call:hover,
+.modal-call:active {
+  background: #276749;
+}
+
+.modal-dialing {
+  margin: 24px 0 0;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b6f76;
+  font-size: 18px;
+  font-weight: 600;
 }

@@ -73,9 +73,10 @@ describe("macros/main.js", () => {
     );
   });
 
-  it("dials and closes the OSD web view when the URL reports a dial hash", async () => {
+  it("dials and closes the OSD web view after the dial-close delay", async () => {
     const { default: xapi } = await import("xapi");
-    const { PANEL_ID, WEBAPP_URL } = await import("../../macros/main.js");
+    const { PANEL_ID, WEBAPP_URL, DIAL_CLOSE_DELAY_MS } =
+      await import("../../macros/main.js");
 
     xapi.Event.UserInterface.Extensions.Panel.Clicked.emit({
       PanelId: PANEL_ID,
@@ -87,7 +88,14 @@ describe("macros/main.js", () => {
     xapi.Status.UserInterface.WebView[1].URL.set(
       `${WEBAPP_URL}#command=dial&number=1234`,
     );
-    await new Promise((resolve) => setImmediate(resolve));
+
+    // The web app's "Dialing..." view gets a moment before anything happens.
+    expect(xapi.Command.Dial).not.toHaveBeenCalled();
+    expect(xapi.Command.UserInterface.WebView.Clear).not.toHaveBeenCalled();
+
+    await new Promise((resolve) =>
+      setTimeout(resolve, DIAL_CLOSE_DELAY_MS + 20),
+    );
 
     expect(xapi.Command.Dial).toHaveBeenCalledWith({ Number: "1234" });
     expect(xapi.Command.UserInterface.WebView.Clear).toHaveBeenCalledWith({
@@ -95,9 +103,10 @@ describe("macros/main.js", () => {
     });
   });
 
-  it("dials and closes the peripheral web view when the URL reports a dial hash", async () => {
+  it("dials and closes the peripheral web view after the dial-close delay", async () => {
     const { default: xapi } = await import("xapi");
-    const { PANEL_ID, WEBAPP_URL } = await import("../../macros/main.js");
+    const { PANEL_ID, WEBAPP_URL, DIAL_CLOSE_DELAY_MS } =
+      await import("../../macros/main.js");
 
     xapi.Event.UserInterface.Extensions.Panel.Clicked.emit({
       PanelId: PANEL_ID,
@@ -110,12 +119,18 @@ describe("macros/main.js", () => {
     xapi.Status.UserInterface.WebView[1].URL.set(
       `${WEBAPP_URL}#command=dial&number=5678`,
     );
-    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(xapi.Command.Dial).not.toHaveBeenCalled();
+
+    await new Promise((resolve) =>
+      setTimeout(resolve, DIAL_CLOSE_DELAY_MS + 20),
+    );
 
     expect(xapi.Command.Dial).toHaveBeenCalledWith({ Number: "5678" });
     expect(xapi.Command.UserInterface.WebView.Clear).toHaveBeenCalledWith({
       PeripheralId: "AA:BB:CC:DD:EE:FF",
     });
+    jest.useRealTimers();
   });
 
   it("ignores web view URL updates that are not a dial request", async () => {
@@ -154,6 +169,47 @@ describe("macros/main.js", () => {
     );
     await new Promise((resolve) => setImmediate(resolve));
 
+    expect(xapi.Command.Dial).not.toHaveBeenCalled();
+  });
+
+  it("closes the OSD web view without dialing when the URL reports exit", async () => {
+    const { default: xapi } = await import("xapi");
+    const { PANEL_ID, WEBAPP_URL } = await import("../../macros/main.js");
+
+    xapi.Event.UserInterface.Extensions.Panel.Clicked.emit({
+      PanelId: PANEL_ID,
+      Origin: "OSD",
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+
+    xapi.Status.UserInterface.WebView[1].Target.set("OSD");
+    xapi.Status.UserInterface.WebView[1].URL.set(`${WEBAPP_URL}#command=exit`);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(xapi.Command.UserInterface.WebView.Clear).toHaveBeenCalledWith({
+      Target: "OSD",
+    });
+    expect(xapi.Command.Dial).not.toHaveBeenCalled();
+  });
+
+  it("closes the peripheral web view without dialing when the URL reports exit", async () => {
+    const { default: xapi } = await import("xapi");
+    const { PANEL_ID, WEBAPP_URL } = await import("../../macros/main.js");
+
+    xapi.Event.UserInterface.Extensions.Panel.Clicked.emit({
+      PanelId: PANEL_ID,
+      Origin: "Controller",
+      PeripheralId: "AA:BB:CC:DD:EE:FF",
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+
+    xapi.Status.UserInterface.WebView[1].PeripheralId.set("AA:BB:CC:DD:EE:FF");
+    xapi.Status.UserInterface.WebView[1].URL.set(`${WEBAPP_URL}#command=exit`);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(xapi.Command.UserInterface.WebView.Clear).toHaveBeenCalledWith({
+      PeripheralId: "AA:BB:CC:DD:EE:FF",
+    });
     expect(xapi.Command.Dial).not.toHaveBeenCalled();
   });
 

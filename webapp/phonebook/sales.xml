@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CiscoIPPhoneDirectory>
   <Title>Sales Team</Title>
-  <Prompt>Select an entry, then Dial or Edit Dial</Prompt>
+  <Prompt>Select Call or Edit dial for an entry</Prompt>
   <DirectoryEntry>
     <Name>Sales - General</Name>
     <Telephone>3000</Telephone>

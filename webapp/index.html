@@ -14,73 +14,91 @@
   </head>
   <body>
     <div class="phone">
-      <header class="phone-titlebar">
+      <header class="phone-header">
+        <button
+          class="phone-icon-button"
+          id="phone-back"
+          type="button"
+          aria-label="Back"
+          hidden
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M15 5 7 12l8 7"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
         <h1 class="phone-title" id="phone-title">Directory</h1>
-        <p class="phone-prompt" id="phone-prompt"></p>
       </header>
 
-      <p class="phone-status" id="phone-status"></p>
+      <div class="phone-card">
+        <p class="phone-prompt" id="phone-prompt"></p>
+        <p class="phone-status" id="phone-status"></p>
 
-      <ul
-        class="phone-list"
-        id="phone-list"
-        role="listbox"
-        aria-label="Directory entries"
-      ></ul>
+        <ul
+          class="phone-list"
+          id="phone-list"
+          role="list"
+          aria-label="Directory entries"
+        ></ul>
 
-      <div class="phone-softkeys">
-        <button class="phone-softkey" id="softkey-back" type="button">
-          Back
-        </button>
-        <button
-          class="phone-softkey phone-softkey--primary"
-          id="softkey-editdial"
-          type="button"
-        >
-          Edit Dial
-        </button>
-        <button
-          class="phone-softkey phone-softkey--primary"
-          id="softkey-dial"
-          type="button"
-        >
-          Dial
-        </button>
+        <div class="phone-card-footer">
+          <button class="phone-pill" id="phone-exit" type="button">Exit</button>
+        </div>
       </div>
     </div>
 
-    <section class="phone-edit" id="phone-edit" hidden>
-      <h2 class="phone-edit-title">Edit Number</h2>
-      <div class="phone-edit-body">
-        <label class="phone-edit-label" for="phone-edit-input"
-          >Number to dial</label
+    <!--
+      Shared confirm/edit/dialing modal, styled after the RoomOS SIP
+      protocol-handler dial-confirmation prompt. "Call" (row action) shows
+      the name/number read-only; "Edit dial" shows an editable input
+      instead. Tapping the modal's own Call button starts dialing, which
+      swaps the Call button for "Dialing..." text and hides the back button.
+    -->
+    <div class="modal-backdrop" id="modal-backdrop" hidden>
+      <div class="modal-card">
+        <button
+          class="modal-back"
+          id="modal-back"
+          type="button"
+          aria-label="Back"
         >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M15 5 7 12l8 7"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+
+        <div class="modal-info" id="modal-info">
+          <p class="modal-name" id="modal-name"></p>
+          <p class="modal-number" id="modal-number"></p>
+        </div>
+
         <input
-          class="phone-edit-input"
-          id="phone-edit-input"
+          class="modal-input"
+          id="modal-input"
           type="tel"
           inputmode="tel"
           autocomplete="off"
+          hidden
         />
-      </div>
-      <div class="phone-softkeys">
-        <button class="phone-softkey" id="phone-edit-cancel" type="button">
-          Cancel
-        </button>
-        <button
-          class="phone-softkey phone-softkey--primary"
-          id="phone-edit-confirm"
-          type="button"
-        >
-          Dial
-        </button>
-      </div>
-    </section>
+        <p class="modal-input-value" id="modal-input-value" hidden></p>
 
-    <section class="phone-dialing" id="phone-dialing" hidden>
-      <div class="phone-dialing__number" id="phone-dialing-number"></div>
-      <div class="phone-dialing__label">Dialing…</div>
-    </section>
+        <button class="modal-call" id="modal-call" type="button">Call</button>
+        <p class="modal-dialing" id="modal-dialing" hidden>Dialing…</p>
+      </div>
+    </div>
 
     <script type="module" src="phonebook.js"></script>
     <script type="module">

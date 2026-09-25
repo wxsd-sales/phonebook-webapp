@@ -9,10 +9,12 @@ import xapi from "xapi";
  * (e.g. a paired Room Navigator) if the panel click event carries a
  * PeripheralId, otherwise the codec's own on-screen display (OSD).
  *
- * The macro then watches that WebView's reported URL for the hash the web
- * app writes when the user completes a dial or dial-edit action
- * (#command=dial&number=<destination>). On seeing it, the macro closes the
- * WebView on the same screen it was opened on and places the call.
+ * The macro then watches that WebView's reported URL for hashes the web app
+ * writes on completing a dial or dial-edit action
+ * (#command=dial&number=<destination>) or on Exit (#command=exit). On Exit
+ * it closes the WebView immediately. On a dial, it waits briefly (so the web
+ * app's own "Dialing..." view has a moment to be seen) before closing the
+ * WebView on the same screen it was opened on and placing the call.
  *
  * The values between the CONFIG markers are managed by `npm run apply-config`
  * (driven by project.config.json) - do not edit them by hand.
@@ -24,6 +26,10 @@ const WEBAPP_URL = "https://wxsd-sales.github.io/phonebook-webapp/webapp/";
 // CONFIG:end
 
 const PANEL_ID = `${MACRO_NAME}-open`;
+
+// How long to let the web app's "Dialing..." view stay on screen before the
+// macro closes the WebView and places the call.
+const DIAL_CLOSE_DELAY_MS = 1000;
 
 // RoomOS has no built-in "phone book" panel icon; Handset is the closest
 // built-in match. Swap this for a custom uploaded icon (Icon: "Custom") if
@@ -87,13 +93,19 @@ function parseQueryParams(query) {
   return params;
 }
 
-// The web app signals a completed dial (direct call or dial-edit) by
-// updating its own URL hash to `command=dial&number=<destination>`.
-function parseDialRequest(url) {
+// The web app signals a completed dial (direct call or dial-edit) with
+// `command=dial&number=<destination>`, and Exit with `command=exit`.
+function parseWebAppCommand(url) {
   const hashIndex = url.indexOf("#");
   if (hashIndex === -1) return null;
   const params = parseQueryParams(url.slice(hashIndex + 1));
-  return params.command === "dial" && params.number ? params.number : null;
+  if (params.command === "dial" && params.number) {
+    return { command: "dial", number: params.number };
+  }
+  if (params.command === "exit") {
+    return { command: "exit" };
+  }
+  return null;
 }
 
 function onPanelClicked(event) {
@@ -107,15 +119,23 @@ function onWebViewChanged(webview) {
   if (!activeWebView || !webview.URL) return;
   if (!webview.URL.startsWith(WEBAPP_URL)) return;
 
-  const number = parseDialRequest(webview.URL);
-  if (!number) return;
+  const request = parseWebAppCommand(webview.URL);
+  if (!request) return;
 
   const target = activeWebView;
   activeWebView = null; // stop reacting to further updates for this session
-  closeWebView(target);
-  xapi.Command.Dial({ Number: number }).catch((error) =>
-    console.error(`${MACRO_NAME}: failed to dial ${number}`, error),
-  );
+
+  if (request.command === "exit") {
+    closeWebView(target);
+    return;
+  }
+
+  setTimeout(() => {
+    closeWebView(target);
+    xapi.Command.Dial({ Number: request.number }).catch((error) =>
+      console.error(`${MACRO_NAME}: failed to dial ${request.number}`, error),
+    );
+  }, DIAL_CLOSE_DELAY_MS);
 }
 
 function onWebViewCleared(event) {
@@ -145,10 +165,11 @@ init();
 export {
   PANEL_ID,
   WEBAPP_URL,
+  DIAL_CLOSE_DELAY_MS,
   openWebApp,
   onPanelClicked,
   onWebViewChanged,
   onWebViewCleared,
-  parseDialRequest,
+  parseWebAppCommand,
   webViewTargetFor,
 };

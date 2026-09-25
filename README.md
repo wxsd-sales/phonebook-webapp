@@ -80,16 +80,23 @@ Set `MACRO_FILE` to deploy a macro other than `macros/main.js`, and
 
 ## Dev scripts
 
-| Command                | Description                                                      |
-| ---------------------- | ---------------------------------------------------------------- |
-| `npm run setup`        | Interactive rename; writes `project.config.json` and applies it  |
-| `npm run apply-config` | Re-apply `project.config.json` to all files                      |
-| `npm run serve`        | Serve the repo locally (wizard + webapp) with Node's http server |
-| `npm run screenshots`  | Capture `assets/*-light.png` / `*-dark.png` via headless Chrome  |
-| `npm run deploy:macro` | Upload a macro to a device over xAPI (see below)                 |
-| `npm run lint`         | Lint with ESLint                                                 |
-| `npm run format`       | Format with Prettier (`npm run format:check` to verify)          |
-| `npm test`             | Run the Jest suite                                               |
+| Command                | Description                                                                                     |
+| ---------------------- | ----------------------------------------------------------------------------------------------- |
+| `npm run setup`        | Interactive rename; writes `project.config.json` and applies it                                 |
+| `npm run apply-config` | Re-apply `project.config.json` to all files                                                     |
+| `npm run serve`        | Serve the repo locally (wizard + webapp) with Node's http server, on `127.0.0.1` only           |
+| `npm run serve:lan`    | Same server, bound to all interfaces so devices on your LAN (e.g. a RoomOS device) can reach it |
+| `npm run screenshots`  | Capture `assets/*-light.png` / `*-dark.png` via headless Chrome                                 |
+| `npm run deploy:macro` | Upload a macro to a device over xAPI (see below)                                                |
+| `npm run lint`         | Lint with ESLint                                                                                |
+| `npm run format`       | Format with Prettier (`npm run format:check` to verify)                                         |
+| `npm test`             | Run the Jest suite                                                                              |
+
+`npm run serve` / `serve:lan` respect `PORT` (default `8080`) and `HOST` env
+vars if you need to override them further, e.g. `HOST=192.0.2.10 npm run
+serve`. When bound to all interfaces, the server prints the LAN-reachable
+URL(s) alongside the loopback one - use that to point a device's WebView at
+your machine directly instead of deploying to GitHub Pages first.
 
 Screenshots use a headless Chrome/Chromium already installed on your machine.
 Set `CHROME_BIN` to override binary detection.

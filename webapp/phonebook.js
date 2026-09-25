@@ -2,33 +2,45 @@
  * Cisco IP phone style XML directory.
  *
  * Fetches a root "CiscoIPPhoneDirectory" XML file and renders it as a
- * browsable, dialable list. A <DirectoryEntry> with a <Telephone> is a
- * callable leaf; one with a <URL> (resolved relative to the file it came
- * from) is a folder that is fetched and pushed onto a navigation stack.
+ * browsable, dialable list of two entry kinds:
+ *   - <DirectoryEntry>: a callable entry (<Name> + <Telephone>), rendered
+ *     with "Call" and "Edit dial" buttons.
+ *   - <MenuItem>: a folder (<Name> + <URL>, resolved relative to the file it
+ *     came from), rendered with a "Select" button that fetches and pushes
+ *     that XML file onto the navigation stack.
  *
- * Completing a dial (direct or via Edit Dial) writes
- * `#command=dial&number=<destination>` to the page's own URL hash. The
- * on-device macro watches the WebView's reported URL for that hash to close
- * the view and place the call.
+ * "Call" and "Edit dial" both open a shared confirm/dial modal (styled after
+ * the RoomOS SIP protocol-handler dial-confirmation prompt): "Call" shows
+ * the name/number read-only, "Edit dial" shows an editable input instead.
+ * Tapping the modal's own Call button writes
+ * `#command=dial&number=<destination>` to the page's own URL hash and swaps
+ * the Call button for a "Dialing..." state. Tapping "Exit" writes
+ * `#command=exit`. The on-device macro watches the WebView's reported URL
+ * for those hashes to close the view (and, for a dial, place the call).
  */
 
 const rootUrl = new URL("phonebook/main.xml", document.baseURI).href;
 
 const els = {
+  back: document.getElementById("phone-back"),
   title: document.getElementById("phone-title"),
   prompt: document.getElementById("phone-prompt"),
   status: document.getElementById("phone-status"),
   list: document.getElementById("phone-list"),
-  back: document.getElementById("softkey-back"),
-  dial: document.getElementById("softkey-dial"),
-  editDial: document.getElementById("softkey-editdial"),
-  edit: document.getElementById("phone-edit"),
-  editInput: document.getElementById("phone-edit-input"),
-  editConfirm: document.getElementById("phone-edit-confirm"),
-  editCancel: document.getElementById("phone-edit-cancel"),
-  dialing: document.getElementById("phone-dialing"),
-  dialingNumber: document.getElementById("phone-dialing-number"),
+  exit: document.getElementById("phone-exit"),
+  modalBackdrop: document.getElementById("modal-backdrop"),
+  modalBack: document.getElementById("modal-back"),
+  modalInfo: document.getElementById("modal-info"),
+  modalName: document.getElementById("modal-name"),
+  modalNumber: document.getElementById("modal-number"),
+  modalInput: document.getElementById("modal-input"),
+  modalInputValue: document.getElementById("modal-input-value"),
+  modalCall: document.getElementById("modal-call"),
+  modalDialing: document.getElementById("modal-dialing"),
 };
+
+// The number the modal's Call button should dial. Set when the modal opens.
+let pendingNumber = "";
 
 const state = {
   stack: [],
@@ -57,18 +69,21 @@ function parseDirectoryXml(xmlText, sourceUrl) {
   const root = doc.documentElement;
   const title = textOf(root, "Title") || "Directory";
   const prompt = textOf(root, "Prompt");
-  const entries = Array.from(root.querySelectorAll("DirectoryEntry")).map(
-    (entry) => {
-      const name = textOf(entry, "Name");
-      const telephone = textOf(entry, "Telephone");
-      const url = textOf(entry, "URL");
-      if (telephone) return { name, telephone };
-      if (url) return { name, url: new URL(url, sourceUrl).href };
-      return { name };
-    },
-  );
+  const entries = Array.from(
+    root.querySelectorAll("DirectoryEntry, MenuItem"),
+  ).map((el) => {
+    const name = textOf(el, "Name");
+    if (el.tagName === "MenuItem") {
+      return {
+        kind: "menu",
+        name,
+        url: new URL(textOf(el, "URL"), sourceUrl).href,
+      };
+    }
+    return { kind: "entry", name, telephone: textOf(el, "Telephone") };
+  });
 
-  return { title, prompt, entries, selectedIndex: -1 };
+  return { title, prompt, entries };
 }
 
 async function fetchDirectory(url) {
@@ -79,10 +94,63 @@ async function fetchDirectory(url) {
   return parseDirectoryXml(await response.text(), url);
 }
 
+function makePill(label, { primary = false, onClick }) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = primary ? "phone-pill phone-pill--primary" : "phone-pill";
+  button.textContent = label;
+  button.addEventListener("click", onClick);
+  return button;
+}
+
+function renderEntry(entry) {
+  const item = document.createElement("li");
+  item.className = "phone-entry";
+
+  const info = document.createElement("div");
+  info.className = "phone-entry__info";
+
+  const name = document.createElement("span");
+  name.className = "phone-entry__name";
+  name.textContent = entry.name;
+  info.appendChild(name);
+
+  const actions = document.createElement("div");
+  actions.className = "phone-entry__actions";
+
+  if (entry.kind === "menu") {
+    actions.appendChild(
+      makePill("Select", {
+        primary: true,
+        onClick: () => openDirectory(entry.url, { pushCurrent: true }),
+      }),
+    );
+  } else {
+    const number = document.createElement("span");
+    number.className = "phone-entry__number";
+    number.textContent = entry.telephone;
+    info.appendChild(number);
+
+    actions.appendChild(
+      makePill("Call", {
+        primary: true,
+        onClick: () => openConfirmModal(entry),
+      }),
+    );
+    actions.appendChild(
+      makePill("Edit dial", { onClick: () => openEditModal(entry) }),
+    );
+  }
+
+  item.append(info, actions);
+  return item;
+}
+
 function render() {
-  const { title, prompt, entries, selectedIndex } = state.current;
+  const { title, prompt, entries } = state.current;
   els.title.textContent = title;
   els.prompt.textContent = prompt;
+  els.back.hidden = state.stack.length === 0;
   els.list.innerHTML = "";
 
   if (entries.length === 0) {
@@ -90,44 +158,12 @@ function render() {
     empty.className = "phone-empty";
     empty.textContent = "No entries";
     els.list.appendChild(empty);
-  }
-
-  entries.forEach((entry, index) => {
-    const item = document.createElement("li");
-    item.className = `phone-entry${entry.url ? " phone-entry--folder" : ""}`;
-    item.setAttribute("role", "option");
-    item.tabIndex = 0;
-    item.setAttribute("aria-selected", String(index === selectedIndex));
-
-    const name = document.createElement("span");
-    name.className = "phone-entry__name";
-    name.textContent = entry.name;
-
-    const detail = document.createElement("span");
-    detail.className = "phone-entry__detail";
-    detail.textContent = entry.url ? "›" : entry.telephone;
-
-    item.append(name, detail);
-    item.addEventListener("click", () => selectEntry(index));
-    els.list.appendChild(item);
-  });
-
-  els.back.disabled = state.stack.length === 0;
-  const selected = entries[selectedIndex];
-  const canCall = Boolean(selected && selected.telephone);
-  els.dial.disabled = !canCall;
-  els.editDial.disabled = !canCall;
-}
-
-function selectEntry(index) {
-  const entry = state.current.entries[index];
-  if (!entry) return;
-  if (entry.url) {
-    openDirectory(entry.url, { pushCurrent: true });
     return;
   }
-  state.current.selectedIndex = index;
-  render();
+
+  for (const entry of entries) {
+    els.list.appendChild(renderEntry(entry));
+  }
 }
 
 async function openDirectory(url, { pushCurrent }) {
@@ -153,55 +189,92 @@ function goBack() {
   render();
 }
 
-function selectedNumber() {
-  const entry = state.current.entries[state.current.selectedIndex];
-  return entry?.telephone || "";
+function setHash(params) {
+  window.location.hash = new URLSearchParams(params).toString();
 }
 
-function commitDial(number) {
-  const digits = number.trim();
-  if (!digits) return;
-  showDialing(digits);
-
-  const params = new URLSearchParams(
-    window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "",
-  );
-  params.set("command", "dial");
-  params.set("number", digits);
-  window.location.hash = params.toString();
+function commitExit() {
+  setHash({ command: "exit" });
 }
 
-function showDialing(number) {
-  els.dialingNumber.textContent = number;
-  els.dialing.hidden = false;
+// Resets the modal to its idle (not-dialing) look before it's (re)opened.
+function resetModal() {
+  els.modalBack.hidden = false;
+  els.modalCall.hidden = false;
+  els.modalDialing.hidden = true;
+  els.modalInputValue.hidden = true;
 }
 
-function openEdit(prefill) {
-  els.editInput.value = prefill;
-  els.edit.hidden = false;
+function openModal() {
+  resetModal();
+  els.modalBackdrop.hidden = false;
+}
+
+function closeModal() {
+  els.modalBackdrop.hidden = true;
+}
+
+// "Call" on a directory entry: show its name/number read-only.
+function openConfirmModal(entry) {
+  pendingNumber = entry.telephone;
+  els.modalName.textContent = entry.name;
+  els.modalNumber.textContent = entry.telephone;
+  els.modalInfo.hidden = false;
+  els.modalInput.hidden = true;
+  openModal();
+}
+
+// "Edit dial" on a directory entry: show an editable, focused input.
+function openEditModal(entry) {
+  pendingNumber = "";
+  els.modalInfo.hidden = true;
+  els.modalInput.hidden = false;
+  els.modalInput.value = entry.telephone;
+  openModal();
   requestAnimationFrame(() => {
-    els.editInput.focus();
-    els.editInput.select();
+    els.modalInput.focus();
+    els.modalInput.select();
   });
 }
 
-function closeEdit() {
-  els.edit.hidden = true;
+// Tapping the modal's own Call button: place the dial hash and swap the
+// Call button for "Dialing...", removing the back button so the modal can
+// no longer be dismissed mid-dial. If dialing from the editable input, it's
+// replaced with plain text (and blurred, to dismiss the on-screen keyboard)
+// so it no longer reads as something the user can still change.
+function startDialing() {
+  const editing = !els.modalInput.hidden;
+  const number = editing ? els.modalInput.value : pendingNumber;
+  const digits = number.trim();
+  if (!digits) return;
+
+  els.modalBack.hidden = true;
+  els.modalCall.hidden = true;
+  els.modalDialing.hidden = false;
+
+  if (editing) {
+    els.modalInput.blur();
+    els.modalInput.hidden = true;
+    els.modalInputValue.textContent = digits;
+    els.modalInputValue.hidden = false;
+  }
+
+  setHash({ command: "dial", number: digits });
 }
 
 els.back.addEventListener("click", goBack);
-els.dial.addEventListener("click", () => commitDial(selectedNumber()));
-els.editDial.addEventListener("click", () => openEdit(selectedNumber()));
-els.editCancel.addEventListener("click", closeEdit);
-els.editConfirm.addEventListener("click", () => {
-  const number = els.editInput.value;
-  closeEdit();
-  commitDial(number);
+els.exit.addEventListener("click", commitExit);
+els.modalCall.addEventListener("click", startDialing);
+els.modalBack.addEventListener("click", closeModal);
+els.modalBackdrop.addEventListener("click", (event) => {
+  if (event.target !== els.modalBackdrop) return;
+  if (!els.modalDialing.hidden) return; // no dismissing mid-dial
+  closeModal();
 });
-els.editInput.addEventListener("keydown", (event) => {
+els.modalInput.addEventListener("keydown", (event) => {
   if (event.key !== "Enter") return;
   event.preventDefault();
-  els.editConfirm.click();
+  els.modalCall.click();
 });
 
 openDirectory(rootUrl, { pushCurrent: false });

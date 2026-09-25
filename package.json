@@ -10,6 +10,7 @@
     "setup": "node scripts/setup.mjs",
     "apply-config": "node scripts/apply-config.mjs",
     "serve": "node scripts/serve.mjs",
+    "serve:lan": "HOST=0.0.0.0 node scripts/serve.mjs",
     "screenshots": "node scripts/screenshot.mjs",
     "deploy:macro": "node scripts/deploy-macro.mjs",
     "lint": "eslint .",
