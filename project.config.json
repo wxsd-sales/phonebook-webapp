@@ -6,5 +6,6 @@
   "author": "William Mills",
   "org": "wxsd-sales",
   "repo": "phonebook-webapp",
-  "webapp": true
+  "webapp": true,
+  "autoCloseSeconds": 0
 }

@@ -33,6 +33,13 @@ describe("macros/main.js", () => {
     expect(xapi.Command.UserInterface.WebView.Display).not.toHaveBeenCalled();
   });
 
+  it("builds the WebView URL with an autoClose hash only when enabled", async () => {
+    const { WEBAPP_URL, buildWebAppUrl } = await import("../../macros/main.js");
+
+    expect(buildWebAppUrl(0)).toBe(WEBAPP_URL);
+    expect(buildWebAppUrl(45)).toBe(`${WEBAPP_URL}#autoClose=45`);
+  });
+
   it("opens the web app on the OSD when the click event carries no PeripheralId", async () => {
     const { default: xapi } = await import("xapi");
     const { PANEL_ID } = await import("../../macros/main.js");

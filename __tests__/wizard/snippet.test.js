@@ -6,12 +6,14 @@ describe("buildSnippet", () => {
     const snippet = buildSnippet({
       name: "my-macro",
       webappUrl: "https://example.github.io/my-macro/webapp/",
+      autoCloseSeconds: 45,
     });
     expect(snippet).toBe(
       [
         "// CONFIG:start",
         'const MACRO_NAME = "my-macro";',
         'const WEBAPP_URL = "https://example.github.io/my-macro/webapp/";',
+        "const AUTO_CLOSE_SECONDS = 45;",
         "// CONFIG:end",
       ].join("\n"),
     );
@@ -22,9 +24,20 @@ describe("buildSnippet", () => {
     expect(snippet).toContain('const MACRO_NAME = "a\\"b";');
   });
 
-  test("defaults missing values to empty strings", () => {
-    expect(buildSnippet()).toContain('const MACRO_NAME = "";');
+  test("defaults missing values to empty strings and auto-close to disabled", () => {
+    const snippet = buildSnippet();
+    expect(snippet).toContain('const MACRO_NAME = "";');
+    expect(snippet).toContain("const AUTO_CLOSE_SECONDS = 0;");
   });
+
+  test.each([0, -5, 1.5, "60", null, undefined, NaN])(
+    "normalises a non-positive-integer autoCloseSeconds (%p) to 0",
+    (autoCloseSeconds) => {
+      expect(buildSnippet({ autoCloseSeconds })).toContain(
+        "const AUTO_CLOSE_SECONDS = 0;",
+      );
+    },
+  );
 });
 
 describe("injectConfig", () => {

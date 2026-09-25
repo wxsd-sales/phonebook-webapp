@@ -11,10 +11,12 @@ import xapi from "xapi";
  *
  * The macro then watches that WebView's reported URL for hashes the web app
  * writes on completing a dial or dial-edit action
- * (#command=dial&number=<destination>) or on Exit (#command=exit). On Exit
- * it closes the WebView immediately. On a dial, it waits briefly (so the web
- * app's own "Dialing..." view has a moment to be seen) before closing the
- * WebView on the same screen it was opened on and placing the call.
+ * (#command=dial&number=<destination>), on Exit (#command=exit), or on its
+ * own inactivity auto-close (#command=exit, see AUTO_CLOSE_SECONDS below).
+ * On Exit it closes the WebView immediately. On a dial, it waits briefly (so
+ * the web app's own "Dialing..." view has a moment to be seen) before
+ * closing the WebView on the same screen it was opened on and placing the
+ * call.
  *
  * The values between the CONFIG markers are managed by `npm run apply-config`
  * (driven by project.config.json) - do not edit them by hand.
@@ -23,6 +25,7 @@ import xapi from "xapi";
 // CONFIG:start
 const MACRO_NAME = "phonebook-webapp";
 const WEBAPP_URL = "https://wxsd-sales.github.io/phonebook-webapp/webapp/";
+const AUTO_CLOSE_SECONDS = 0;
 // CONFIG:end
 
 const PANEL_ID = `${MACRO_NAME}-open`;
@@ -61,12 +64,20 @@ function sameTarget(a, b) {
     : b.Target === "OSD" && !b.PeripheralId;
 }
 
+// Adds an `autoClose=<seconds>` hash param the web app reads on load, when
+// the inactivity auto-close feature is enabled (AUTO_CLOSE_SECONDS > 0).
+function buildWebAppUrl(autoCloseSeconds) {
+  return autoCloseSeconds > 0
+    ? `${WEBAPP_URL}#autoClose=${autoCloseSeconds}`
+    : WEBAPP_URL;
+}
+
 async function openWebApp(target) {
   await xapi.Command.UserInterface.WebView.Display({
     ...target,
-    Url: WEBAPP_URL,
+    Url: buildWebAppUrl(AUTO_CLOSE_SECONDS),
     Title: MACRO_NAME,
-    Mode: "Fullscreen",
+    Mode: "Modal",
   });
   activeWebView = target;
 }
@@ -165,7 +176,9 @@ init();
 export {
   PANEL_ID,
   WEBAPP_URL,
+  AUTO_CLOSE_SECONDS,
   DIAL_CLOSE_DELAY_MS,
+  buildWebAppUrl,
   openWebApp,
   onPanelClicked,
   onWebViewChanged,

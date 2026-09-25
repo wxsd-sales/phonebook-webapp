@@ -43,6 +43,12 @@
       "type": "boolean",
       "description": "Whether to build/deploy the optional advanced web app.",
       "default": true
+    },
+    "autoCloseSeconds": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Seconds of touch/keyboard inactivity in the web app before the macro auto-closes it. 0 disables the feature.",
+      "default": 0
     }
   }
 }

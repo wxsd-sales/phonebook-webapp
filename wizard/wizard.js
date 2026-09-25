@@ -26,22 +26,51 @@ const MACRO_SOURCE_URL = "../macros/main.js";
 (function initSettings() {
   const buttonNameInput = document.getElementById("button-name");
   const webappUrlInput = document.getElementById("webapp-url");
+  const autoCloseEnabledInput = document.getElementById("auto-close-enabled");
+  const autoCloseSecondsInput = document.getElementById("auto-close-seconds");
+  const autoCloseSecondsField = document.getElementById(
+    "auto-close-seconds-field",
+  );
   const output = document.getElementById("output");
   const copyButton = document.getElementById("copy-button");
   const downloadButton = document.getElementById("download-button");
   const exportStatus = document.getElementById("export-status");
 
-  if (!buttonNameInput || !webappUrlInput || !output) {
+  if (
+    !buttonNameInput ||
+    !webappUrlInput ||
+    !autoCloseEnabledInput ||
+    !autoCloseSecondsInput ||
+    !autoCloseSecondsField ||
+    !output
+  ) {
     return;
   }
 
+  const DEFAULT_AUTO_CLOSE_SECONDS = 60;
+
   buttonNameInput.value = config.name ?? "";
   webappUrlInput.value = config.webappUrl ?? "";
+  autoCloseEnabledInput.checked = Boolean(config.autoCloseSeconds);
+  autoCloseSecondsInput.value = config.autoCloseSeconds
+    ? String(config.autoCloseSeconds)
+    : "";
+  autoCloseSecondsField.hidden = !autoCloseEnabledInput.checked;
 
-  const getValues = () => ({
-    name: buttonNameInput.value.trim(),
-    webappUrl: webappUrlInput.value.trim(),
-  });
+  const getValues = () => {
+    const parsedSeconds = parseInt(autoCloseSecondsInput.value, 10);
+    const autoCloseSeconds =
+      autoCloseEnabledInput.checked &&
+      Number.isInteger(parsedSeconds) &&
+      parsedSeconds > 0
+        ? parsedSeconds
+        : 0;
+    return {
+      name: buttonNameInput.value.trim(),
+      webappUrl: webappUrlInput.value.trim(),
+      autoCloseSeconds,
+    };
+  };
 
   const downloadName = () => {
     const base =
@@ -68,6 +97,25 @@ const MACRO_SOURCE_URL = "../macros/main.js";
 
   buttonNameInput.addEventListener("input", updatePreview);
   webappUrlInput.addEventListener("input", updatePreview);
+
+  autoCloseEnabledInput.addEventListener("change", () => {
+    autoCloseSecondsField.hidden = !autoCloseEnabledInput.checked;
+    if (autoCloseEnabledInput.checked && !autoCloseSecondsInput.value) {
+      autoCloseSecondsInput.value = String(DEFAULT_AUTO_CLOSE_SECONDS);
+    }
+    updatePreview();
+  });
+
+  // Strip anything that isn't a digit as the user types, so the field can
+  // only ever hold a positive integer (or be empty).
+  autoCloseSecondsInput.addEventListener("input", () => {
+    const digitsOnly = autoCloseSecondsInput.value.replace(/[^0-9]/g, "");
+    if (digitsOnly !== autoCloseSecondsInput.value) {
+      autoCloseSecondsInput.value = digitsOnly;
+    }
+    updatePreview();
+  });
+
   updatePreview();
 
   if (copyButton) {

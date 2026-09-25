@@ -27,6 +27,11 @@ export async function loadConfig() {
     author: raw.author ?? "",
     description: raw.description ?? "",
     webapp: raw.webapp !== false,
+    // 0 disables the web app's auto-close-on-inactivity feature.
+    autoCloseSeconds:
+      Number.isInteger(raw.autoCloseSeconds) && raw.autoCloseSeconds > 0
+        ? raw.autoCloseSeconds
+        : 0,
     pagesBaseUrl,
     wizardUrl: `${pagesBaseUrl}/wizard/`,
     webappUrl: `${pagesBaseUrl}/webapp/`,
@@ -98,6 +103,7 @@ function appConfigFile(cfg) {
     wizardUrl: cfg.wizardUrl,
     webappUrl: cfg.webappUrl,
     repoUrl: cfg.repoUrl,
+    autoCloseSeconds: cfg.autoCloseSeconds,
   };
   // A standalone, prettier-ignored file so generated JSON never fights the
   // formatter over key quoting or indentation inside index.html.
@@ -152,6 +158,7 @@ export async function applyConfig() {
   const macroInner = [
     `const MACRO_NAME = ${JSON.stringify(cfg.name)};`,
     `const WEBAPP_URL = ${JSON.stringify(cfg.webappUrl)};`,
+    `const AUTO_CLOSE_SECONDS = ${cfg.autoCloseSeconds};`,
   ].join("\n");
   for (const filePath of await listJsFiles(join(ROOT, "macros"))) {
     await updateFile(relative(ROOT, filePath), (content) => {

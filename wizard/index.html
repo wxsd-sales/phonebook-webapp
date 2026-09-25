@@ -231,6 +231,52 @@
                   >The page the macro opens in an on-device WebView.</span
                 >
               </div>
+
+              <div class="config-divider"></div>
+
+              <div class="toggle-list">
+                <div class="toggle-row">
+                  <div class="toggle-row__text">
+                    <span class="toggle-row__label"
+                      >Auto-close on inactivity</span
+                    >
+                    <span class="toggle-row__hint"
+                      >Closes the web app after a period with no touch, click,
+                      or keyboard input.</span
+                    >
+                  </div>
+                  <label class="switch">
+                    <input
+                      class="switch__input"
+                      type="checkbox"
+                      id="auto-close-enabled"
+                      name="auto-close-enabled"
+                    />
+                    <span class="switch__track"
+                      ><span class="switch__thumb"></span
+                    ></span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="field" id="auto-close-seconds-field" hidden>
+                <label class="field__label" for="auto-close-seconds"
+                  >Inactivity timeout (seconds)</label
+                >
+                <input
+                  class="field__input"
+                  type="number"
+                  id="auto-close-seconds"
+                  name="auto-close-seconds"
+                  min="1"
+                  step="1"
+                  inputmode="numeric"
+                  placeholder="60"
+                />
+                <span class="field__hint"
+                  >Whole seconds greater than zero.</span
+                >
+              </div>
             </form>
           </section>
 

@@ -17,6 +17,10 @@
  * the Call button for a "Dialing..." state. Tapping "Exit" writes
  * `#command=exit`. The on-device macro watches the WebView's reported URL
  * for those hashes to close the view (and, for a dial, place the call).
+ *
+ * If the macro opened this page with an `#autoClose=<seconds>` hash param,
+ * the page also watches for touch/click/keyboard activity and writes
+ * `#command=exit` itself after that many seconds pass with none.
  */
 
 const rootUrl = new URL("phonebook/main.xml", document.baseURI).href;
@@ -276,5 +280,48 @@ els.modalInput.addEventListener("keydown", (event) => {
   event.preventDefault();
   els.modalCall.click();
 });
+
+// Reads `autoClose` from the page's *initial* URL hash only - later hash
+// changes are this page's own doing (dial/exit) and must not re-arm this.
+function readInitialAutoCloseSeconds() {
+  const raw = window.location.hash.startsWith("#")
+    ? window.location.hash.slice(1)
+    : window.location.hash;
+  if (!raw) return 0;
+  const seconds = Number(new URLSearchParams(raw).get("autoClose"));
+  return Number.isInteger(seconds) && seconds > 0 ? seconds : 0;
+}
+
+// Exits after `seconds` pass with no touch, click, or keyboard input.
+// `pointerdown` covers touch, mouse, and pen in one event.
+function watchInactivity(seconds) {
+  const ACTIVITY_EVENTS = ["pointerdown", "keydown"];
+  let timer = null;
+
+  const stopWatching = () => {
+    clearTimeout(timer);
+    ACTIVITY_EVENTS.forEach((type) =>
+      document.removeEventListener(type, resetTimer, true),
+    );
+  };
+
+  function resetTimer() {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      stopWatching();
+      commitExit();
+    }, seconds * 1000);
+  }
+
+  ACTIVITY_EVENTS.forEach((type) =>
+    document.addEventListener(type, resetTimer, true),
+  );
+  resetTimer();
+}
+
+const initialAutoCloseSeconds = readInitialAutoCloseSeconds();
+if (initialAutoCloseSeconds > 0) {
+  watchInactivity(initialAutoCloseSeconds);
+}
 
 openDirectory(rootUrl, { pushCurrent: false });

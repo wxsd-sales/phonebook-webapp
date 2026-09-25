@@ -8,13 +8,26 @@ export const CONFIG_START = "// CONFIG:start";
 export const CONFIG_END = "// CONFIG:end";
 
 /**
+ * Normalises a value to a positive integer, or 0 (meaning "disabled") for
+ * anything else - matches the "positive integers only" input constraint.
+ */
+function normalizeSeconds(value) {
+  return Number.isInteger(value) && value > 0 ? value : 0;
+}
+
+/**
  * Build the CONFIG block (markers included) for the given values.
  */
-export function buildSnippet({ name = "", webappUrl = "" } = {}) {
+export function buildSnippet({
+  name = "",
+  webappUrl = "",
+  autoCloseSeconds = 0,
+} = {}) {
   return [
     CONFIG_START,
     `const MACRO_NAME = ${JSON.stringify(name)};`,
     `const WEBAPP_URL = ${JSON.stringify(webappUrl)};`,
+    `const AUTO_CLOSE_SECONDS = ${normalizeSeconds(autoCloseSeconds)};`,
     CONFIG_END,
   ].join("\n");
 }
