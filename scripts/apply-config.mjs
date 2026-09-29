@@ -27,6 +27,9 @@ export async function loadConfig() {
     author: raw.author ?? "",
     description: raw.description ?? "",
     webapp: raw.webapp !== false,
+    buttonName: raw.buttonName || "Phone Book",
+    buttonIcon: raw.buttonIcon || "Handset",
+    buttonLocation: raw.buttonLocation || "HomeScreen",
     // 0 disables the web app's auto-close-on-inactivity feature.
     autoCloseSeconds:
       Number.isInteger(raw.autoCloseSeconds) && raw.autoCloseSeconds > 0
@@ -103,6 +106,9 @@ function appConfigFile(cfg) {
     wizardUrl: cfg.wizardUrl,
     webappUrl: cfg.webappUrl,
     repoUrl: cfg.repoUrl,
+    buttonName: cfg.buttonName,
+    buttonIcon: cfg.buttonIcon,
+    buttonLocation: cfg.buttonLocation,
     autoCloseSeconds: cfg.autoCloseSeconds,
   };
   // A standalone, prettier-ignored file so generated JSON never fights the
@@ -156,6 +162,9 @@ export async function applyConfig() {
 
   // Macros: every *.js under macros/ that carries the CONFIG markers.
   const macroInner = [
+    `const BUTTON_NAME = ${JSON.stringify(cfg.buttonName)};`,
+    `const BUTTON_ICON = ${JSON.stringify(cfg.buttonIcon)};`,
+    `const BUTTON_LOCATION = ${JSON.stringify(cfg.buttonLocation)};`,
     `const MACRO_NAME = ${JSON.stringify(cfg.name)};`,
     `const WEBAPP_URL = ${JSON.stringify(cfg.webappUrl)};`,
     `const AUTO_CLOSE_SECONDS = ${cfg.autoCloseSeconds};`,

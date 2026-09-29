@@ -6,6 +6,40 @@ const config = window.APP_CONFIG ?? {};
 // "Download macro" action can fetch it and inject the configured values.
 const MACRO_SOURCE_URL = "../macros/main.js";
 
+const BUTTON_ICONS = [
+  "Blinds",
+  "Briefing",
+  "Camera",
+  "Concierge",
+  "Disc",
+  "Handset",
+  "Help",
+  "Helpdesk",
+  "Home",
+  "Hvac",
+  "Info",
+  "Input",
+  "Language",
+  "Laptop",
+  "Lightbulb",
+  "Media",
+  "Microphone",
+  "Power",
+  "Proximity",
+  "Record",
+  "Sliders",
+  "Tv",
+];
+
+const BUTTON_LOCATIONS = [
+  "HomeScreen",
+  "CallControls",
+  "HomeScreenAndCallControls",
+  "ControlPane",
+  "RoomScheduler",
+  "Hidden",
+];
+
 /* Header: product name and source-code link derived from APP_CONFIG. */
 (function initHeader() {
   const product = document.getElementById("app-product");
@@ -25,6 +59,8 @@ const MACRO_SOURCE_URL = "../macros/main.js";
 /* Settings form -> live macro config snippet + macro download. */
 (function initSettings() {
   const buttonNameInput = document.getElementById("button-name");
+  const buttonIconInput = document.getElementById("button-icon");
+  const buttonLocationInput = document.getElementById("button-location");
   const webappUrlInput = document.getElementById("webapp-url");
   const autoCloseEnabledInput = document.getElementById("auto-close-enabled");
   const autoCloseSecondsInput = document.getElementById("auto-close-seconds");
@@ -38,6 +74,8 @@ const MACRO_SOURCE_URL = "../macros/main.js";
 
   if (
     !buttonNameInput ||
+    !buttonIconInput ||
+    !buttonLocationInput ||
     !webappUrlInput ||
     !autoCloseEnabledInput ||
     !autoCloseSecondsInput ||
@@ -48,8 +86,31 @@ const MACRO_SOURCE_URL = "../macros/main.js";
   }
 
   const DEFAULT_AUTO_CLOSE_SECONDS = 60;
+  const DEFAULT_BUTTON_ICON = "Handset";
+  const DEFAULT_BUTTON_LOCATION = "HomeScreen";
 
-  buttonNameInput.value = config.name ?? "";
+  const populateSelect = (select, options, selected) => {
+    select.innerHTML = "";
+    for (const value of options) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = value;
+      select.appendChild(option);
+    }
+    select.value = selected;
+  };
+
+  buttonNameInput.value = config.buttonName || "Phone Book";
+  populateSelect(
+    buttonIconInput,
+    BUTTON_ICONS,
+    config.buttonIcon || DEFAULT_BUTTON_ICON,
+  );
+  populateSelect(
+    buttonLocationInput,
+    BUTTON_LOCATIONS,
+    config.buttonLocation || DEFAULT_BUTTON_LOCATION,
+  );
   webappUrlInput.value = config.webappUrl ?? "";
   autoCloseEnabledInput.checked = Boolean(config.autoCloseSeconds);
   autoCloseSecondsInput.value = config.autoCloseSeconds
@@ -66,15 +127,18 @@ const MACRO_SOURCE_URL = "../macros/main.js";
         ? parsedSeconds
         : 0;
     return {
-      name: buttonNameInput.value.trim(),
+      name: config.name ?? "",
       webappUrl: webappUrlInput.value.trim(),
+      buttonName: buttonNameInput.value.trim(),
+      buttonIcon: buttonIconInput.value,
+      buttonLocation: buttonLocationInput.value,
       autoCloseSeconds,
     };
   };
 
   const downloadName = () => {
     const base =
-      (getValues().name || config.name || "macro")
+      (getValues().buttonName || config.buttonName || config.name || "macro")
         .replace(/[^a-zA-Z0-9-_]+/g, "-")
         .replace(/^-+|-+$/g, "") || "macro";
     return `${base}.js`;
@@ -96,6 +160,8 @@ const MACRO_SOURCE_URL = "../macros/main.js";
   };
 
   buttonNameInput.addEventListener("input", updatePreview);
+  buttonIconInput.addEventListener("change", updatePreview);
+  buttonLocationInput.addEventListener("change", updatePreview);
   webappUrlInput.addEventListener("input", updatePreview);
 
   autoCloseEnabledInput.addEventListener("change", () => {

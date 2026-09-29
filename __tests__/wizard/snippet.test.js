@@ -6,11 +6,17 @@ describe("buildSnippet", () => {
     const snippet = buildSnippet({
       name: "my-macro",
       webappUrl: "https://example.github.io/my-macro/webapp/",
+      buttonName: "Phone Book",
+      buttonIcon: "Handset",
+      buttonLocation: "HomeScreen",
       autoCloseSeconds: 45,
     });
     expect(snippet).toBe(
       [
         "// CONFIG:start",
+        'const BUTTON_NAME = "Phone Book";',
+        'const BUTTON_ICON = "Handset";',
+        'const BUTTON_LOCATION = "HomeScreen";',
         'const MACRO_NAME = "my-macro";',
         'const WEBAPP_URL = "https://example.github.io/my-macro/webapp/";',
         "const AUTO_CLOSE_SECONDS = 45;",
@@ -27,6 +33,9 @@ describe("buildSnippet", () => {
   test("defaults missing values to empty strings and auto-close to disabled", () => {
     const snippet = buildSnippet();
     expect(snippet).toContain('const MACRO_NAME = "";');
+    expect(snippet).toContain('const BUTTON_NAME = "";');
+    expect(snippet).toContain('const BUTTON_ICON = "";');
+    expect(snippet).toContain('const BUTTON_LOCATION = "";');
     expect(snippet).toContain("const AUTO_CLOSE_SECONDS = 0;");
   });
 

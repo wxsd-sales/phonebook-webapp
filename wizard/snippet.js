@@ -21,10 +21,16 @@ function normalizeSeconds(value) {
 export function buildSnippet({
   name = "",
   webappUrl = "",
+  buttonName = "",
+  buttonIcon = "",
+  buttonLocation = "",
   autoCloseSeconds = 0,
 } = {}) {
   return [
     CONFIG_START,
+    `const BUTTON_NAME = ${JSON.stringify(buttonName)};`,
+    `const BUTTON_ICON = ${JSON.stringify(buttonIcon)};`,
+    `const BUTTON_LOCATION = ${JSON.stringify(buttonLocation)};`,
     `const MACRO_NAME = ${JSON.stringify(name)};`,
     `const WEBAPP_URL = ${JSON.stringify(webappUrl)};`,
     `const AUTO_CLOSE_SECONDS = ${normalizeSeconds(autoCloseSeconds)};`,

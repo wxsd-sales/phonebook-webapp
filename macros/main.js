@@ -23,6 +23,9 @@ import xapi from "xapi";
  */
 
 // CONFIG:start
+const BUTTON_NAME = "Phone Book";
+const BUTTON_ICON = "Handset";
+const BUTTON_LOCATION = "HomeScreen";
 const MACRO_NAME = "phonebook-webapp";
 const WEBAPP_URL = "https://wxsd-sales.github.io/phonebook-webapp/webapp/";
 const AUTO_CLOSE_SECONDS = 0;
@@ -33,20 +36,6 @@ const PANEL_ID = `${MACRO_NAME}-open`;
 // How long to let the web app's "Dialing..." view stay on screen before the
 // macro closes the WebView and places the call.
 const DIAL_CLOSE_DELAY_MS = 1000;
-
-// RoomOS has no built-in "phone book" panel icon; Handset is the closest
-// built-in match. Swap this for a custom uploaded icon (Icon: "Custom") if
-// you want literal book artwork instead.
-const PANEL_XML = `<Extensions>
-  <Panel>
-    <Order>1</Order>
-    <PanelId>${PANEL_ID}</PanelId>
-    <Location>HomeScreen</Location>
-    <Icon>Handset</Icon>
-    <Name>Phone Book</Name>
-    <ActivityType>Custom</ActivityType>
-  </Panel>
-</Extensions>`;
 
 // The WebView.Display/Clear target this macro currently has open, either
 // `{ PeripheralId }` or `{ Target: "OSD" }`. Null when no directory is open.
@@ -155,15 +144,47 @@ function onWebViewCleared(event) {
   }
 }
 
+/**
+ * Saves UI Extension Panel, changes the text, color and icon, depending on state
+ */
+async function createPanel() {
+  console.log("Creating Panel");
+
+  const order = await panelOrder(PANEL_ID);
+
+  const panel = `<Extensions>
+  <Panel>
+    ${order}
+    <Location>${BUTTON_LOCATION}</Location>
+    <Icon>${BUTTON_ICON}</Icon>
+    <Name>${BUTTON_NAME}</Name>
+    <ActivityType>Custom</ActivityType>
+  </Panel>
+</Extensions>`;
+
+  xapi.Command.UserInterface.Extensions.Panel.Save(
+    { PanelId: PANEL_ID },
+    panel,
+  ).catch((e) => console.log("Error saving panel: " + e.message));
+}
+
+/*********************************************************
+ * Gets the current Panel Order if exiting Macro panel is present
+ * to preserve the order in relation to other custom UI Extensions
+ **********************************************************/
+async function panelOrder(panelId) {
+  const list = await xapi.Command.UserInterface.Extensions.List({
+    ActivityType: "Custom",
+  });
+  const panels = list?.Extensions?.Panel;
+  if (!panels) return "";
+  const existingPanel = panels.find((panel) => panel.PanelId == panelId);
+  if (!existingPanel) return "";
+  return `<Order>${existingPanel.Order}</Order>`;
+}
+
 async function init() {
-  try {
-    await xapi.Command.UserInterface.Extensions.Panel.Save(
-      { PanelId: PANEL_ID },
-      PANEL_XML,
-    );
-  } catch (error) {
-    console.error(`${MACRO_NAME}: failed to save UI panel`, error);
-  }
+  await createPanel();
 
   xapi.Event.UserInterface.Extensions.Panel.Clicked.on(onPanelClicked);
   xapi.Status.UserInterface.WebView.on(onWebViewChanged);
