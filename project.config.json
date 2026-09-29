@@ -7,5 +7,8 @@
   "org": "wxsd-sales",
   "repo": "phonebook-webapp",
   "webapp": true,
+  "buttonName": "Phone Book",
+  "buttonIcon": "Handset",
+  "buttonLocation": "HomeScreen",
   "autoCloseSeconds": 0
 }

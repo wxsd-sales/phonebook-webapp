@@ -44,6 +44,54 @@
       "description": "Whether to build/deploy the optional advanced web app.",
       "default": true
     },
+    "buttonName": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Display name for the home-screen button.",
+      "default": "Phone Book"
+    },
+    "buttonIcon": {
+      "type": "string",
+      "enum": [
+        "Blinds",
+        "Briefing",
+        "Camera",
+        "Concierge",
+        "Disc",
+        "Handset",
+        "Help",
+        "Helpdesk",
+        "Home",
+        "Hvac",
+        "Info",
+        "Input",
+        "Language",
+        "Laptop",
+        "Lightbulb",
+        "Media",
+        "Microphone",
+        "Power",
+        "Proximity",
+        "Record",
+        "Sliders",
+        "Tv"
+      ],
+      "description": "RoomOS UI Extensions panel icon for the button.",
+      "default": "Handset"
+    },
+    "buttonLocation": {
+      "type": "string",
+      "enum": [
+        "HomeScreen",
+        "CallControls",
+        "HomeScreenAndCallControls",
+        "ControlPane",
+        "RoomScheduler",
+        "Hidden"
+      ],
+      "description": "Where the button appears in the device UI.",
+      "default": "HomeScreen"
+    },
     "autoCloseSeconds": {
       "type": "integer",
       "minimum": 0,

@@ -6,5 +6,8 @@ window.APP_CONFIG = {
   "wizardUrl": "https://wxsd-sales.github.io/phonebook-webapp/wizard/",
   "webappUrl": "https://wxsd-sales.github.io/phonebook-webapp/webapp/",
   "repoUrl": "https://github.com/wxsd-sales/phonebook-webapp",
+  "buttonName": "Phone Book",
+  "buttonIcon": "Handset",
+  "buttonLocation": "HomeScreen",
   "autoCloseSeconds": 0
 };
