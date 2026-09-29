@@ -30,6 +30,8 @@ export async function loadConfig() {
     buttonName: raw.buttonName || "Phone Book",
     buttonIcon: raw.buttonIcon || "Handset",
     buttonLocation: raw.buttonLocation || "HomeScreen",
+    // Empty uses the web app's own bundled phonebook/main.xml.
+    phonebookRootUrl: raw.phonebookRootUrl || "",
     // 0 disables the web app's auto-close-on-inactivity feature.
     autoCloseSeconds:
       Number.isInteger(raw.autoCloseSeconds) && raw.autoCloseSeconds > 0
@@ -109,6 +111,7 @@ function appConfigFile(cfg) {
     buttonName: cfg.buttonName,
     buttonIcon: cfg.buttonIcon,
     buttonLocation: cfg.buttonLocation,
+    phonebookRootUrl: cfg.phonebookRootUrl,
     autoCloseSeconds: cfg.autoCloseSeconds,
   };
   // A standalone, prettier-ignored file so generated JSON never fights the
@@ -167,6 +170,7 @@ export async function applyConfig() {
     `const BUTTON_LOCATION = ${JSON.stringify(cfg.buttonLocation)};`,
     `const MACRO_NAME = ${JSON.stringify(cfg.name)};`,
     `const WEBAPP_URL = ${JSON.stringify(cfg.webappUrl)};`,
+    `const PHONEBOOK_ROOT_URL = ${JSON.stringify(cfg.phonebookRootUrl)};`,
     `const AUTO_CLOSE_SECONDS = ${cfg.autoCloseSeconds};`,
   ].join("\n");
   for (const filePath of await listJsFiles(join(ROOT, "macros"))) {

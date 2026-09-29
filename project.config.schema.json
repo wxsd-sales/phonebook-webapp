@@ -92,6 +92,11 @@
       "description": "Where the button appears in the device UI.",
       "default": "HomeScreen"
     },
+    "phonebookRootUrl": {
+      "type": "string",
+      "description": "Where the web app fetches the root directory XML from. Empty uses the bundled phonebook/main.xml; otherwise a path relative to webappUrl or a full URL to another host.",
+      "default": ""
+    },
     "autoCloseSeconds": {
       "type": "integer",
       "minimum": 0,

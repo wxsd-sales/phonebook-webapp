@@ -263,6 +263,33 @@
                 >
               </div>
 
+              <div class="field">
+                <label class="field__label" for="phonebook-root-url"
+                  >Phonebook root URL</label
+                >
+                <input
+                  class="field__input"
+                  type="text"
+                  id="phonebook-root-url"
+                  name="phonebook-root-url"
+                  placeholder="phonebook/main.xml"
+                  autocapitalize="off"
+                  spellcheck="false"
+                />
+                <span class="field__hint"
+                  >Where the directory XML is fetched from. Leave blank to use
+                  the bundled <code>phonebook/main.xml</code> next to the web
+                  app, or set a path relative to the Web app URL, or a full URL
+                  to host it elsewhere.</span
+                >
+                <p
+                  class="field-status"
+                  id="phonebook-root-status"
+                  role="status"
+                  aria-live="polite"
+                ></p>
+              </div>
+
               <div class="config-divider"></div>
 
               <div class="toggle-list">

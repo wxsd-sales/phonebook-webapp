@@ -682,6 +682,31 @@ h2 {
   color: var(--wizard-danger);
 }
 
+/* Inline validation message under a field (e.g. the phonebook root URL). */
+.field-status {
+  margin: 6px 0 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  background: var(--wizard-surface-muted);
+  color: var(--wizard-text-secondary);
+}
+
+.field-status:empty {
+  display: none;
+}
+
+.field-status[data-kind="warning"] {
+  background: var(--wizard-warning-bg);
+  color: var(--wizard-warning);
+}
+
+.field-status[data-kind="error"] {
+  background: var(--wizard-danger-bg);
+  color: var(--wizard-danger);
+}
+
 @media (max-width: 820px) {
   .app-header {
     flex-wrap: nowrap;

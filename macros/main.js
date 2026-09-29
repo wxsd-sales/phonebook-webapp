@@ -18,6 +18,11 @@ import xapi from "xapi";
  * closing the WebView on the same screen it was opened on and placing the
  * call.
  *
+ * PHONEBOOK_ROOT_URL lets the directory XML be hosted separately from the
+ * web app (a relative path resolved against WEBAPP_URL, or a full URL to
+ * another host) - see buildWebAppUrl(). Leave it empty to use the web app's
+ * own bundled phonebook/main.xml.
+ *
  * The values between the CONFIG markers are managed by `npm run apply-config`
  * (driven by project.config.json) - do not edit them by hand.
  */
@@ -28,6 +33,7 @@ const BUTTON_ICON = "Handset";
 const BUTTON_LOCATION = "HomeScreen";
 const MACRO_NAME = "phonebook-webapp";
 const WEBAPP_URL = "https://wxsd-sales.github.io/phonebook-webapp/webapp/";
+const PHONEBOOK_ROOT_URL = "";
 const AUTO_CLOSE_SECONDS = 0;
 // CONFIG:end
 
@@ -53,18 +59,31 @@ function sameTarget(a, b) {
     : b.Target === "OSD" && !b.PeripheralId;
 }
 
-// Adds an `autoClose=<seconds>` hash param the web app reads on load, when
-// the inactivity auto-close feature is enabled (AUTO_CLOSE_SECONDS > 0).
-function buildWebAppUrl(autoCloseSeconds) {
-  return autoCloseSeconds > 0
-    ? `${WEBAPP_URL}#autoClose=${autoCloseSeconds}`
-    : WEBAPP_URL;
+// Builds a "key=value&key2=value2" string from an object, skipping falsy
+// values. The RoomOS macro runtime has no URLSearchParams, so this is done
+// by hand.
+function buildQueryString(params) {
+  return Object.entries(params)
+    .filter(([, value]) => value)
+    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+    .join("&");
+}
+
+// Adds `autoClose=<seconds>` and/or `phonebookRoot=<url>` hash params the
+// web app reads on load, when each feature is configured
+// (AUTO_CLOSE_SECONDS > 0, PHONEBOOK_ROOT_URL non-empty).
+function buildWebAppUrl(autoCloseSeconds, phonebookRootUrl) {
+  const query = buildQueryString({
+    autoClose: autoCloseSeconds > 0 ? autoCloseSeconds : "",
+    phonebookRoot: phonebookRootUrl,
+  });
+  return query ? `${WEBAPP_URL}#${query}` : WEBAPP_URL;
 }
 
 async function openWebApp(target) {
   await xapi.Command.UserInterface.WebView.Display({
     ...target,
-    Url: buildWebAppUrl(AUTO_CLOSE_SECONDS),
+    Url: buildWebAppUrl(AUTO_CLOSE_SECONDS, PHONEBOOK_ROOT_URL),
     Title: MACRO_NAME,
     Mode: "Modal",
   });
@@ -197,6 +216,7 @@ init();
 export {
   PANEL_ID,
   WEBAPP_URL,
+  PHONEBOOK_ROOT_URL,
   AUTO_CLOSE_SECONDS,
   DIAL_CLOSE_DELAY_MS,
   buildWebAppUrl,
