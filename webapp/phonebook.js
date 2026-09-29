@@ -21,9 +21,27 @@
  * If the macro opened this page with an `#autoClose=<seconds>` hash param,
  * the page also watches for touch/click/keyboard activity and writes
  * `#command=exit` itself after that many seconds pass with none.
+ *
+ * The root directory XML is normally the bundled phonebook/main.xml, but
+ * the macro can point elsewhere with a `#phonebookRoot=<url>` hash param -
+ * either a path relative to this page or a full URL to another host.
  */
 
-const rootUrl = new URL("phonebook/main.xml", document.baseURI).href;
+// Reads `phonebookRoot` from the page's *initial* URL hash only, same
+// reasoning as autoClose below: later hash changes are this page's own
+// doing (dial/exit) and must not change where the directory loads from.
+function readInitialPhonebookRootUrl() {
+  const raw = window.location.hash.startsWith("#")
+    ? window.location.hash.slice(1)
+    : window.location.hash;
+  if (!raw) return "";
+  return new URLSearchParams(raw).get("phonebookRoot")?.trim() || "";
+}
+
+const rootUrl = new URL(
+  readInitialPhonebookRootUrl() || "phonebook/main.xml",
+  document.baseURI,
+).href;
 
 const els = {
   back: document.getElementById("phone-back"),

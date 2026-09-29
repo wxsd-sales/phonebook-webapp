@@ -9,6 +9,7 @@ describe("buildSnippet", () => {
       buttonName: "Phone Book",
       buttonIcon: "Handset",
       buttonLocation: "HomeScreen",
+      phonebookRootUrl: "https://xml.example.com/main.xml",
       autoCloseSeconds: 45,
     });
     expect(snippet).toBe(
@@ -19,6 +20,7 @@ describe("buildSnippet", () => {
         'const BUTTON_LOCATION = "HomeScreen";',
         'const MACRO_NAME = "my-macro";',
         'const WEBAPP_URL = "https://example.github.io/my-macro/webapp/";',
+        'const PHONEBOOK_ROOT_URL = "https://xml.example.com/main.xml";',
         "const AUTO_CLOSE_SECONDS = 45;",
         "// CONFIG:end",
       ].join("\n"),
@@ -36,6 +38,7 @@ describe("buildSnippet", () => {
     expect(snippet).toContain('const BUTTON_NAME = "";');
     expect(snippet).toContain('const BUTTON_ICON = "";');
     expect(snippet).toContain('const BUTTON_LOCATION = "";');
+    expect(snippet).toContain('const PHONEBOOK_ROOT_URL = "";');
     expect(snippet).toContain("const AUTO_CLOSE_SECONDS = 0;");
   });
 

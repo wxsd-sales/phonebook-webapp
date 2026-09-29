@@ -9,5 +9,6 @@ window.APP_CONFIG = {
   "buttonName": "Phone Book",
   "buttonIcon": "Handset",
   "buttonLocation": "HomeScreen",
+  "phonebookRootUrl": "",
   "autoCloseSeconds": 0
 };

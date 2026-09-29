@@ -62,6 +62,8 @@ const BUTTON_LOCATIONS = [
   const buttonIconInput = document.getElementById("button-icon");
   const buttonLocationInput = document.getElementById("button-location");
   const webappUrlInput = document.getElementById("webapp-url");
+  const phonebookRootUrlInput = document.getElementById("phonebook-root-url");
+  const phonebookRootStatus = document.getElementById("phonebook-root-status");
   const autoCloseEnabledInput = document.getElementById("auto-close-enabled");
   const autoCloseSecondsInput = document.getElementById("auto-close-seconds");
   const autoCloseSecondsField = document.getElementById(
@@ -77,6 +79,8 @@ const BUTTON_LOCATIONS = [
     !buttonIconInput ||
     !buttonLocationInput ||
     !webappUrlInput ||
+    !phonebookRootUrlInput ||
+    !phonebookRootStatus ||
     !autoCloseEnabledInput ||
     !autoCloseSecondsInput ||
     !autoCloseSecondsField ||
@@ -112,6 +116,7 @@ const BUTTON_LOCATIONS = [
     config.buttonLocation || DEFAULT_BUTTON_LOCATION,
   );
   webappUrlInput.value = config.webappUrl ?? "";
+  phonebookRootUrlInput.value = config.phonebookRootUrl ?? "";
   autoCloseEnabledInput.checked = Boolean(config.autoCloseSeconds);
   autoCloseSecondsInput.value = config.autoCloseSeconds
     ? String(config.autoCloseSeconds)
@@ -132,6 +137,7 @@ const BUTTON_LOCATIONS = [
       buttonName: buttonNameInput.value.trim(),
       buttonIcon: buttonIconInput.value,
       buttonLocation: buttonLocationInput.value,
+      phonebookRootUrl: phonebookRootUrlInput.value.trim(),
       autoCloseSeconds,
     };
   };
@@ -154,15 +160,85 @@ const BUTTON_LOCATIONS = [
     }
   };
 
+  const setPhonebookRootStatus = (message, kind = "") => {
+    phonebookRootStatus.textContent = message;
+    if (kind) {
+      phonebookRootStatus.dataset.kind = kind;
+    } else {
+      delete phonebookRootStatus.dataset.kind;
+    }
+  };
+
+  // Resolves the phonebook root against the web app URL (matching the web
+  // app's own relative-or-absolute resolution) and flags:
+  //   - HTTPS webapp + HTTP phonebook: blocking error (browsers refuse this
+  //     mixed-content request outright).
+  //   - Different hostnames: non-blocking CORS warning.
+  // Returns true when export should be blocked.
+  const validatePhonebookRoot = () => {
+    const webappUrlValue = webappUrlInput.value.trim();
+    const phonebookRootValue = phonebookRootUrlInput.value.trim();
+
+    let webappUrlObj;
+    try {
+      webappUrlObj = new URL(webappUrlValue);
+    } catch {
+      setPhonebookRootStatus("");
+      return false;
+    }
+
+    let resolvedUrl;
+    try {
+      resolvedUrl = new URL(
+        phonebookRootValue || "phonebook/main.xml",
+        webappUrlObj,
+      );
+    } catch {
+      setPhonebookRootStatus("Enter a valid relative path or URL.", "error");
+      return true;
+    }
+
+    if (
+      webappUrlObj.protocol === "https:" &&
+      resolvedUrl.protocol === "http:"
+    ) {
+      setPhonebookRootStatus(
+        `The web app is served over HTTPS but this URL is HTTP (${resolvedUrl.origin}). ` +
+          "Browsers block HTTPS pages from loading HTTP resources, so this " +
+          "can't be exported until the phonebook is served over HTTPS too.",
+        "error",
+      );
+      return true;
+    }
+
+    if (resolvedUrl.hostname !== webappUrlObj.hostname) {
+      setPhonebookRootStatus(
+        `This is a different host (${resolvedUrl.hostname}) than the web app ` +
+          `(${webappUrlObj.hostname}). Make sure that server allows ` +
+          `cross-origin requests from ${webappUrlObj.origin}, or the web ` +
+          "app won't be able to load it.",
+        "warning",
+      );
+      return false;
+    }
+
+    setPhonebookRootStatus("");
+    return false;
+  };
+
   const updatePreview = () => {
+    const blocked = validatePhonebookRoot();
     // Assign via textContent (never innerHTML) so user input is treated as text.
     output.textContent = buildSnippet(getValues());
+    if (copyButton) copyButton.disabled = blocked;
+    if (downloadButton) downloadButton.disabled = blocked;
   };
 
   buttonNameInput.addEventListener("input", updatePreview);
   buttonIconInput.addEventListener("change", updatePreview);
   buttonLocationInput.addEventListener("change", updatePreview);
   webappUrlInput.addEventListener("input", updatePreview);
+  phonebookRootUrlInput.addEventListener("input", updatePreview);
 
   autoCloseEnabledInput.addEventListener("change", () => {
     autoCloseSecondsField.hidden = !autoCloseEnabledInput.checked;

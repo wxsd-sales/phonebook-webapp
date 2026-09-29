@@ -33,11 +33,17 @@ describe("macros/main.js", () => {
     expect(xapi.Command.UserInterface.WebView.Display).not.toHaveBeenCalled();
   });
 
-  it("builds the WebView URL with an autoClose hash only when enabled", async () => {
+  it("builds the WebView URL with autoClose/phonebookRoot hashes only when configured", async () => {
     const { WEBAPP_URL, buildWebAppUrl } = await import("../../macros/main.js");
 
-    expect(buildWebAppUrl(0)).toBe(WEBAPP_URL);
-    expect(buildWebAppUrl(45)).toBe(`${WEBAPP_URL}#autoClose=45`);
+    expect(buildWebAppUrl(0, "")).toBe(WEBAPP_URL);
+    expect(buildWebAppUrl(45, "")).toBe(`${WEBAPP_URL}#autoClose=45`);
+    expect(buildWebAppUrl(0, "https://xml.example.com/main.xml")).toBe(
+      `${WEBAPP_URL}#phonebookRoot=https%3A%2F%2Fxml.example.com%2Fmain.xml`,
+    );
+    expect(buildWebAppUrl(45, "https://xml.example.com/main.xml")).toBe(
+      `${WEBAPP_URL}#autoClose=45&phonebookRoot=https%3A%2F%2Fxml.example.com%2Fmain.xml`,
+    );
   });
 
   it("opens the web app on the OSD when the click event carries no PeripheralId", async () => {

@@ -24,6 +24,7 @@ export function buildSnippet({
   buttonName = "",
   buttonIcon = "",
   buttonLocation = "",
+  phonebookRootUrl = "",
   autoCloseSeconds = 0,
 } = {}) {
   return [
@@ -33,6 +34,7 @@ export function buildSnippet({
     `const BUTTON_LOCATION = ${JSON.stringify(buttonLocation)};`,
     `const MACRO_NAME = ${JSON.stringify(name)};`,
     `const WEBAPP_URL = ${JSON.stringify(webappUrl)};`,
+    `const PHONEBOOK_ROOT_URL = ${JSON.stringify(phonebookRootUrl)};`,
     `const AUTO_CLOSE_SECONDS = ${normalizeSeconds(autoCloseSeconds)};`,
     CONFIG_END,
   ].join("\n");
