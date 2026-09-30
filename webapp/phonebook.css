@@ -232,6 +232,14 @@ body {
   background: rgba(30, 30, 32, 0.82);
 }
 
+/* On a Room Navigator, the on-screen keyboard covers the bottom of the
+   screen while the edit-dial input is focused. Dock the modal near the top
+   instead of centering it so the Call button stays clear of the keyboard. */
+.modal-backdrop.modal-backdrop--keyboard {
+  align-items: flex-start;
+  padding-top: 48px;
+}
+
 .modal-card {
   position: relative;
   width: min(420px, 86vw);

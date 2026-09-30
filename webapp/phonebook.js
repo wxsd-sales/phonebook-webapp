@@ -25,7 +25,19 @@
  * The root directory XML is normally the bundled phonebook/main.xml, but
  * the macro can point elsewhere with a `#phonebookRoot=<url>` hash param -
  * either a path relative to this page or a full URL to another host.
+ *
+ * On a Room Navigator, its on-screen keyboard covers the bottom of the
+ * screen while the edit-dial input is focused, hiding the Call button. While
+ * that input is focused there the modal docks near the top instead of
+ * centering; tapping anywhere else while the input isn't focused re-centers
+ * it. This never applies to the OSD/Controller WebView, which has no
+ * on-screen keyboard to cover anything.
  */
+
+// A Room Navigator's user agent reliably contains this substring; it's the
+// least likely part of the string to change across RoomOS/QtWebEngine/
+// Chromium version bumps.
+const isRoomNavigator = navigator.userAgent.includes("Room Navigator");
 
 // Reads `phonebookRoot` from the page's *initial* URL hash only, same
 // reasoning as autoClose below: later hash changes are this page's own
@@ -225,6 +237,21 @@ function resetModal() {
   els.modalCall.hidden = false;
   els.modalDialing.hidden = true;
   els.modalInputValue.hidden = true;
+  els.modalBackdrop.classList.remove("modal-backdrop--keyboard");
+}
+
+// Room Navigator only: docks the modal near the top while the edit-dial
+// input is focused (its on-screen keyboard would otherwise cover the Call
+// button), and re-centers it as soon as that's no longer the focused
+// element - the modal's own idea of "keyboard visible" is just "is this
+// input focused", checked fresh on every tap.
+function syncModalForKeyboard() {
+  if (!isRoomNavigator || els.modalBackdrop.hidden) return;
+  const keyboardVisible = document.activeElement === els.modalInput;
+  els.modalBackdrop.classList.toggle(
+    "modal-backdrop--keyboard",
+    keyboardVisible,
+  );
 }
 
 function openModal() {
@@ -298,6 +325,8 @@ els.modalInput.addEventListener("keydown", (event) => {
   event.preventDefault();
   els.modalCall.click();
 });
+els.modalInput.addEventListener("focus", syncModalForKeyboard);
+document.addEventListener("click", syncModalForKeyboard);
 
 // Reads `autoClose` from the page's *initial* URL hash only - later hash
 // changes are this page's own doing (dial/exit) and must not re-arm this.
