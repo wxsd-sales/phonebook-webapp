@@ -1,7 +1,15 @@
 import xapi from "xapi";
 
 /*
- * Example Cisco RoomOS macro.
+ * Phonebook Web App Macro
+ *
+ * Author:   William Mills
+ *           Solutions Engineer
+ *           wimills@cisco.com
+ *           Cisco Systems
+ *
+ * Version:  1.0.0
+ * Released: 2026-10-06
  *
  * Adds a "Phone Book" button to the home screen that opens the project's web
  * app - a Cisco IP phone style XML directory - in a WebView. The button opens
@@ -23,8 +31,19 @@ import xapi from "xapi";
  * another host) - see buildWebAppUrl(). Leave it empty to use the web app's
  * own bundled phonebook/main.xml.
  *
- * The values between the CONFIG markers are managed by `npm run apply-config`
- * (driven by project.config.json) - do not edit them by hand.
+ * ALLOW_INSECURE_HTTPS is for web servers without a trusted certificate
+ * (typically one addressed by IP, or with a self-signed certificate). When
+ * true, the macro adds the web app's hostname to the device's WebEngine
+ * AllowInsecureHttps list on start and opens the WebView with
+ * AllowInsecureHttps set. If WEBAPP_URL is an https:// URL with an IP address
+ * and this is false, the macro can't work, so it shows an on-screen alert on
+ * start instead of running.
+ *
+ * A web-based configuration wizard for this macro is available at:
+ * https://wxsd-sales.github.io/phonebook-webapp/wizard/
+ *
+ * The full README, source code and license details are available on GitHub:
+ * https://github.com/wxsd-sales/phonebook-webapp
  */
 
 // CONFIG:start
@@ -35,6 +54,7 @@ const MACRO_NAME = "phonebook-webapp";
 const WEBAPP_URL = "https://wxsd-sales.github.io/phonebook-webapp/webapp/";
 const PHONEBOOK_ROOT_URL = "";
 const AUTO_CLOSE_SECONDS = 0;
+const ALLOW_INSECURE_HTTPS = false;
 // CONFIG:end
 
 const PANEL_ID = `${MACRO_NAME}-open`;
@@ -80,12 +100,63 @@ function buildWebAppUrl(autoCloseSeconds, phonebookRootUrl) {
   return query ? `${WEBAPP_URL}#${query}` : WEBAPP_URL;
 }
 
+// The hostname (or IP) of an http(s) URL, or "" if it isn't one. The RoomOS
+// macro runtime has no URL class, so this is done by hand.
+function getHostname(url) {
+  const match = /^https?:\/\/(?:[^/?#@]*@)?(\[[^\]]+\]|[^/?#:]+)/i.exec(
+    String(url).trim(),
+  );
+  return match ? match[1] : "";
+}
+
+function isIpAddress(hostname) {
+  return (
+    /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname) ||
+    (hostname.startsWith("[") && hostname.endsWith("]"))
+  );
+}
+
+// An https:// web app addressed by IP can't present a certificate valid for
+// that address, so it needs ALLOW_INSECURE_HTTPS to load at all.
+function needsInsecureHttps(url) {
+  return /^https:\/\//i.test(url) && isIpAddress(getHostname(url));
+}
+
+async function allowInsecureHttpsForWebApp() {
+  const hostname = getHostname(WEBAPP_URL);
+  if (!hostname) return;
+  try {
+    await xapi.Command.WebEngine.AllowInsecureHttps.Add({ Hostname: hostname });
+  } catch (error) {
+    console.error(
+      `${MACRO_NAME}: failed to allow insecure HTTPS for ${hostname}`,
+      error,
+    );
+  }
+}
+
+function showConfigError() {
+  const message =
+    `The web app URL (${WEBAPP_URL}) is an HTTPS address that uses an IP address, ` +
+    "so Allow Insecure HTTPS must be enabled in the macro config. " +
+    "This macro will not function until this config is fixed.";
+  console.error(`${MACRO_NAME}: ${message}`);
+  return xapi.Command.UserInterface.Message.Alert.Display({
+    Title: `${BUTTON_NAME} macro: configuration error`,
+    Text: message,
+    Duration: 0,
+  }).catch((error) =>
+    console.error(`${MACRO_NAME}: failed to show config alert`, error),
+  );
+}
+
 async function openWebApp(target) {
   await xapi.Command.UserInterface.WebView.Display({
     ...target,
     Url: buildWebAppUrl(AUTO_CLOSE_SECONDS, PHONEBOOK_ROOT_URL),
     Title: MACRO_NAME,
     Mode: "Modal",
+    ...(ALLOW_INSECURE_HTTPS ? { AllowInsecureHttps: "True" } : {}),
   });
   activeWebView = target;
 }
@@ -203,6 +274,12 @@ async function panelOrder(panelId) {
 }
 
 async function init() {
+  if (!ALLOW_INSECURE_HTTPS && needsInsecureHttps(WEBAPP_URL)) {
+    await showConfigError();
+    return;
+  }
+  if (ALLOW_INSECURE_HTTPS) await allowInsecureHttpsForWebApp();
+
   await createPanel();
 
   xapi.Event.UserInterface.Extensions.Panel.Clicked.on(onPanelClicked);
@@ -218,8 +295,12 @@ export {
   WEBAPP_URL,
   PHONEBOOK_ROOT_URL,
   AUTO_CLOSE_SECONDS,
+  ALLOW_INSECURE_HTTPS,
   DIAL_CLOSE_DELAY_MS,
   buildWebAppUrl,
+  getHostname,
+  isIpAddress,
+  needsInsecureHttps,
   openWebApp,
   onPanelClicked,
   onWebViewChanged,

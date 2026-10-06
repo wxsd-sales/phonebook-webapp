@@ -61,8 +61,6 @@
       crossorigin="anonymous"
     />
     <title>Phonebook Web App</title>
-    <!-- Generated from project.config.json by scripts/apply-config.mjs. -->
-    <script src="app-config.js"></script>
     <link rel="stylesheet" href="styles.css" />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   </head>
@@ -168,7 +166,7 @@
               class="icon icon-adjust-horizontal-regular"
               aria-hidden="true"
             ></span>
-            <span class="tab__label">General</span>
+            <span class="tab__label">Configure</span>
           </button>
           <button
             class="tab"
@@ -181,7 +179,20 @@
             data-tab-target="export"
           >
             <span class="icon icon-save-regular" aria-hidden="true"></span>
-            <span class="tab__label">Export</span>
+            <span class="tab__label">Export Macro</span>
+          </button>
+          <button
+            class="tab"
+            id="tab-hosting"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="hosting"
+            tabindex="-1"
+            data-tab-target="hosting"
+          >
+            <span class="icon icon-browser-regular" aria-hidden="true"></span>
+            <span class="tab__label">Export Web App</span>
           </button>
         </div>
 
@@ -194,11 +205,12 @@
             aria-labelledby="tab-general"
             tabindex="0"
           >
-            <h2>Macro Settings</h2>
+            <h2>Configuration</h2>
             <p>
-              Configure the macro, then open the <strong>Export</strong> tab to
-              copy the generated <code>CONFIG</code> block into
-              <code>macros/main.js</code>.
+              Configure the macro, then open the
+              <strong>Export Macro</strong> tab to copy or download it. To host
+              the web app on your own server, use the
+              <strong>Export Web App</strong> tab.
             </p>
 
             <form class="config-form" id="wizard-form" autocomplete="off">
@@ -261,6 +273,12 @@
                 <span class="field__hint"
                   >The page the macro opens in an on-device WebView.</span
                 >
+                <p
+                  class="field-status"
+                  id="webapp-url-status"
+                  role="status"
+                  aria-live="polite"
+                ></p>
               </div>
 
               <div class="field">
@@ -293,6 +311,30 @@
               <div class="config-divider"></div>
 
               <div class="toggle-list">
+                <div class="toggle-row">
+                  <div class="toggle-row__text">
+                    <span class="toggle-row__label">Allow insecure HTTPS</span>
+                    <span class="toggle-row__hint"
+                      >Adds the web app's hostname or IP to the device's
+                      WebEngine <code>AllowInsecureHttps</code> list and opens
+                      the web app with insecure HTTPS allowed. Enable this if
+                      your web server uses a self-signed or otherwise untrusted
+                      certificate, or is reached by IP address over
+                      <code>https://</code>.</span
+                    >
+                  </div>
+                  <label class="switch">
+                    <input
+                      class="switch__input"
+                      type="checkbox"
+                      id="allow-insecure-https"
+                      name="allow-insecure-https"
+                    />
+                    <span class="switch__track"
+                      ><span class="switch__thumb"></span
+                    ></span>
+                  </label>
+                </div>
                 <div class="toggle-row">
                   <div class="toggle-row__text">
                     <span class="toggle-row__label"
@@ -347,7 +389,7 @@
             tabindex="0"
             hidden
           >
-            <h2>Macro Config</h2>
+            <h2>Export Macro</h2>
             <p>
               Copy this block and paste it between the
               <code>// CONFIG:start</code> and
@@ -387,6 +429,143 @@
                 aria-live="polite"
               ></p>
             </div>
+          </section>
+
+          <!-- Export Web App -->
+          <section
+            class="webapp-function"
+            id="hosting"
+            role="tabpanel"
+            aria-labelledby="tab-hosting"
+            tabindex="0"
+            hidden
+          >
+            <h2>Export Web App</h2>
+            <p>
+              Download the phonebook web app as a static bundle (HTML, CSS and
+              JavaScript) to host on your own internal web server, then point
+              the macro at it.
+            </p>
+
+            <div class="toggle-list">
+              <div class="toggle-row">
+                <div class="toggle-row__text">
+                  <span class="toggle-row__label"
+                    >Include example phonebook directory</span
+                  >
+                  <span class="toggle-row__hint"
+                    >Adds the sample <code>phonebook/</code> folder (<code
+                      >main.xml</code
+                    >
+                    and its linked sample XML files). Turn off to export only
+                    <code>index.html</code> and the CSS/JavaScript assets.</span
+                  >
+                </div>
+                <label class="switch">
+                  <input
+                    class="switch__input"
+                    type="checkbox"
+                    id="include-samples"
+                    name="include-samples"
+                    checked
+                  />
+                  <span class="switch__track"
+                    ><span class="switch__thumb"></span
+                  ></span>
+                </label>
+              </div>
+            </div>
+
+            <p
+              class="field-status"
+              id="include-samples-status"
+              role="status"
+            ></p>
+
+            <div class="code-output">
+              <div class="code-output__header">
+                <span class="field__label">Bundle contents</span>
+                <div class="code-output__actions">
+                  <button
+                    id="download-webapp-button"
+                    type="button"
+                    class="icon-button icon-button--with-label secondary-button"
+                  >
+                    <span
+                      class="icon icon-download-bold"
+                      aria-hidden="true"
+                    ></span>
+                    <span class="icon-button__label">Download web app</span>
+                  </button>
+                </div>
+              </div>
+              <pre
+                class="code-output__command"
+              ><code id="webapp-contents"></code></pre>
+              <p
+                class="export-status"
+                id="webapp-export-status"
+                role="status"
+                aria-live="polite"
+              ></p>
+            </div>
+
+            <div class="config-divider"></div>
+
+            <h3 class="steps-title">Host it on your own web server</h3>
+            <ol class="steps">
+              <li>
+                <strong>Unzip</strong> the download. It contains a single
+                <code>phonebook-webapp/</code> folder with
+                <code>index.html</code> at its top level.
+              </li>
+              <li>
+                <strong>Copy the folder to your internal web server</strong>,
+                for example into the document root so it is served from
+                <code>https://phonebook.example.com/phonebook/</code>. Any
+                static web server works (nginx, Apache, IIS, ...); no
+                server-side code is needed. Serve it over HTTPS and make sure
+                your devices can reach that FQDN. No certificate, or only an IP
+                address? See the note on insecure HTTPS in the next step.
+              </li>
+              <li>
+                <strong>Point the macro at it.</strong> On the
+                <button
+                  type="button"
+                  class="link-button"
+                  data-tab-link="general"
+                >
+                  Configure
+                </button>
+                tab, set <strong>Web app URL</strong> to the full FQDN and path
+                of your copy, e.g.
+                <code>https://phonebook.example.com/phonebook/</code>. If the
+                server uses a self-signed certificate or is addressed by IP
+                (e.g. <code>https://10.0.0.5/phonebook/</code>), also turn on
+                <strong>Allow insecure HTTPS</strong>; the macro then adds that
+                host to the device's WebEngine allow list.
+              </li>
+              <li>
+                <strong>Choose the directory.</strong> With the example
+                directory included, leave <strong>Phonebook root URL</strong>
+                blank. Otherwise put your own
+                <code>CiscoIPPhoneDirectory</code> XML on your server and set
+                <strong>Phonebook root URL</strong> to it (a path relative to
+                the web app, or a full URL; a different host must allow
+                cross-origin requests).
+              </li>
+              <li>
+                <strong>Export the macro</strong> from the
+                <button
+                  type="button"
+                  class="link-button"
+                  data-tab-link="export"
+                >
+                  Export Macro
+                </button>
+                tab and deploy it to your device.
+              </li>
+            </ol>
           </section>
         </div>
       </div>

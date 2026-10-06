@@ -26,6 +26,11 @@
  * the macro can point elsewhere with a `#phonebookRoot=<url>` hash param -
  * either a path relative to this page or a full URL to another host.
  *
+ * For documentation screenshots, the page can be opened with a
+ * `#modal=call` or `#modal=edit` hash param (plus an optional `entry=<name>`,
+ * defaulting to the first callable entry) to open that modal as soon as the
+ * directory has loaded. It only opens the modal; nothing is ever dialed.
+ *
  * On a Room Navigator, its on-screen keyboard covers the bottom of the
  * screen while the edit-dial input is focused, hiding the Call button. While
  * that input is focused there the modal docks near the top instead of
@@ -371,4 +376,30 @@ if (initialAutoCloseSeconds > 0) {
   watchInactivity(initialAutoCloseSeconds);
 }
 
-openDirectory(rootUrl, { pushCurrent: false });
+// Reads `modal` (and optional `entry`) from the initial URL hash, so a
+// screenshot can be taken with a modal already open.
+function readInitialModalRequest() {
+  const raw = window.location.hash.startsWith("#")
+    ? window.location.hash.slice(1)
+    : window.location.hash;
+  const params = new URLSearchParams(raw);
+  const modal = params.get("modal");
+  if (modal !== "call" && modal !== "edit") return null;
+  return { modal, entry: params.get("entry")?.trim().toLowerCase() || "" };
+}
+
+function openRequestedModal({ modal, entry: entryName }) {
+  const callable = state.current?.entries.filter((e) => e.kind === "entry");
+  const entry =
+    callable?.find((e) => e.name.toLowerCase() === entryName) || callable?.[0];
+  if (!entry) return;
+  if (modal === "edit") {
+    openEditModal(entry);
+  } else {
+    openConfirmModal(entry);
+  }
+}
+
+const initialModalRequest = readInitialModalRequest();
+await openDirectory(rootUrl, { pushCurrent: false });
+if (initialModalRequest) openRequestedModal(initialModalRequest);

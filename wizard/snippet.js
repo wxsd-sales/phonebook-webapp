@@ -16,6 +16,38 @@ function normalizeSeconds(value) {
 }
 
 /**
+ * The hostname (or IP) of an http(s) URL, or "" if the value isn't one.
+ */
+export function getHostname(url) {
+  try {
+    const parsed = new URL(String(url).trim());
+    return parsed.protocol === "https:" || parsed.protocol === "http:"
+      ? parsed.hostname
+      : "";
+  } catch {
+    return "";
+  }
+}
+
+export function isIpAddress(hostname) {
+  return (
+    /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname) ||
+    (hostname.startsWith("[") && hostname.endsWith("]"))
+  );
+}
+
+/**
+ * An https:// web app URL addressed by IP can't present a certificate valid
+ * for that address, so the macro must be told to allow insecure HTTPS.
+ */
+export function needsInsecureHttps(url) {
+  return (
+    String(url).trim().toLowerCase().startsWith("https://") &&
+    isIpAddress(getHostname(url))
+  );
+}
+
+/**
  * Build the CONFIG block (markers included) for the given values.
  */
 export function buildSnippet({
@@ -26,6 +58,7 @@ export function buildSnippet({
   buttonLocation = "",
   phonebookRootUrl = "",
   autoCloseSeconds = 0,
+  allowInsecureHttps = false,
 } = {}) {
   return [
     CONFIG_START,
@@ -36,6 +69,7 @@ export function buildSnippet({
     `const WEBAPP_URL = ${JSON.stringify(webappUrl)};`,
     `const PHONEBOOK_ROOT_URL = ${JSON.stringify(phonebookRootUrl)};`,
     `const AUTO_CLOSE_SECONDS = ${normalizeSeconds(autoCloseSeconds)};`,
+    `const ALLOW_INSECURE_HTTPS = ${allowInsecureHttps === true};`,
     CONFIG_END,
   ].join("\n");
 }

@@ -31,16 +31,7 @@ jobs:
             mkdir -p _site/macros
             cp -r macros/. _site/macros/
           fi
-          # Include the web app unless project.config.json disables it.
-          INCLUDE_WEBAPP=true
-          if [ -f project.config.json ]; then
-            if node --input-type=commonjs -e "process.exit(require('./project.config.json').webapp===false?1:0)"; then
-              INCLUDE_WEBAPP=true
-            else
-              INCLUDE_WEBAPP=false
-            fi
-          fi
-          if [ "$INCLUDE_WEBAPP" = "true" ] && [ -d webapp ]; then
+          if [ -d webapp ]; then
             mkdir -p _site/webapp
             cp -r webapp/. _site/webapp/
           fi

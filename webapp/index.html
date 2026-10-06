@@ -7,8 +7,6 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
     <title>Phonebook Web App</title>
-    <!-- Generated from project.config.json by scripts/apply-config.mjs. -->
-    <script src="app-config.js"></script>
     <link rel="stylesheet" href="phonebook.css" />
     <link rel="icon" href="../wizard/favicon.svg" type="image/svg+xml" />
   </head>
@@ -101,11 +99,5 @@
     </div>
 
     <script type="module" src="phonebook.js"></script>
-    <script type="module">
-      const config = window.APP_CONFIG ?? {};
-      if (config.title) {
-        document.title = config.title;
-      }
-    </script>
   </body>
 </html>

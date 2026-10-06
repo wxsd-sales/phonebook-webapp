@@ -8,7 +8,13 @@ import prettier from "eslint-config-prettier";
  */
 export default [
   {
-    ignores: ["node_modules/**", "assets/**", "_site/**", "package-lock.json"],
+    ignores: [
+      "node_modules/**",
+      "assets/**",
+      "__tests__/macros/.generated/**",
+      "_site/**",
+      "package-lock.json",
+    ],
   },
   js.configs.recommended,
   {

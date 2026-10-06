@@ -1,4 +1,34 @@
-import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import {
+  afterAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+} from "@jest/globals";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { injectConfig } from "../../wizard/snippet.js";
+
+// Loads a copy of the macro with different CONFIG values (the real macro
+// reads them from module-level constants, so they can't be changed at runtime).
+const MACRO_SOURCE = readFileSync(
+  new URL("../../macros/main.js", import.meta.url),
+  "utf8",
+);
+// Kept inside the repo (gitignored) so the copies can resolve the "xapi"
+// module mapping.
+const tempDir = fileURLToPath(new URL("./.generated/", import.meta.url));
+mkdirSync(tempDir, { recursive: true });
+afterAll(() => rmSync(tempDir, { recursive: true, force: true }));
+let tempCount = 0;
+async function importMacroWith(values) {
+  const file = join(tempDir, `macro-${tempCount++}.mjs`);
+  writeFileSync(file, injectConfig(MACRO_SOURCE, values));
+  return import(file);
+}
+const tick = () => new Promise((resolve) => setImmediate(resolve));
 
 describe("macros/main.js", () => {
   beforeEach(async () => {
@@ -245,5 +275,127 @@ describe("macros/main.js", () => {
     await new Promise((resolve) => setImmediate(resolve));
 
     expect(xapi.Command.Dial).not.toHaveBeenCalled();
+  });
+
+  describe("insecure HTTPS", () => {
+    const base = {
+      name: "phonebook-webapp",
+      buttonName: "Phone Book",
+      buttonIcon: "Handset",
+      buttonLocation: "HomeScreen",
+    };
+
+    it("does not touch the allow list or set AllowInsecureHttps by default", async () => {
+      const { default: xapi } = await import("xapi");
+      const { PANEL_ID } = await import("../../macros/main.js");
+      await tick();
+
+      xapi.Event.UserInterface.Extensions.Panel.Clicked.emit({
+        PanelId: PANEL_ID,
+        Origin: "OSD",
+      });
+      await tick();
+
+      expect(
+        xapi.Command.WebEngine.AllowInsecureHttps.Add,
+      ).not.toHaveBeenCalled();
+      const args = xapi.Command.UserInterface.WebView.Display.mock.calls[0][0];
+      expect(args).not.toHaveProperty("AllowInsecureHttps");
+    });
+
+    it.each([
+      ["an IP address", "https://10.1.2.3/phonebook/", "10.1.2.3"],
+      [
+        "an FQDN",
+        "https://phonebook.example.com/app/",
+        "phonebook.example.com",
+      ],
+      ["an IP with a port", "https://10.1.2.3:8443/", "10.1.2.3"],
+    ])(
+      "adds %s to the allow list and displays the web view with AllowInsecureHttps",
+      async (_label, webappUrl, hostname) => {
+        const { default: xapi } = await import("xapi");
+        const { PANEL_ID } = await importMacroWith({
+          ...base,
+          webappUrl,
+          allowInsecureHttps: true,
+        });
+        await tick();
+
+        expect(
+          xapi.Command.WebEngine.AllowInsecureHttps.Add,
+        ).toHaveBeenCalledWith({ Hostname: hostname });
+        expect(
+          xapi.Command.UserInterface.Message.Alert.Display,
+        ).not.toHaveBeenCalled();
+
+        xapi.Event.UserInterface.Extensions.Panel.Clicked.emit({
+          PanelId: PANEL_ID,
+          Origin: "OSD",
+        });
+        await tick();
+
+        expect(xapi.Command.UserInterface.WebView.Display).toHaveBeenCalledWith(
+          expect.objectContaining({
+            Url: expect.stringContaining(webappUrl),
+            AllowInsecureHttps: "True",
+          }),
+        );
+      },
+    );
+
+    it("shows an on-screen error and does not start when an https IP URL has insecure HTTPS disabled", async () => {
+      const { default: xapi } = await import("xapi");
+      await importMacroWith({
+        ...base,
+        webappUrl: "https://10.1.2.3/phonebook/",
+        allowInsecureHttps: false,
+      });
+      await tick();
+
+      expect(
+        xapi.Command.UserInterface.Message.Alert.Display,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          Text: expect.stringContaining("will not function"),
+        }),
+      );
+      expect(
+        xapi.Command.UserInterface.Extensions.Panel.Save,
+      ).not.toHaveBeenCalled();
+      expect(
+        xapi.Command.WebEngine.AllowInsecureHttps.Add,
+      ).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      "https://phonebook.example.com/app/",
+      "http://10.1.2.3/phonebook/",
+    ])("starts normally without an error for %s", async (webappUrl) => {
+      const { default: xapi } = await import("xapi");
+      await importMacroWith({ ...base, webappUrl, allowInsecureHttps: false });
+      await tick();
+
+      expect(
+        xapi.Command.UserInterface.Message.Alert.Display,
+      ).not.toHaveBeenCalled();
+      expect(
+        xapi.Command.UserInterface.Extensions.Panel.Save,
+      ).toHaveBeenCalled();
+    });
+
+    it("detects https IP URLs", async () => {
+      const { needsInsecureHttps, getHostname, isIpAddress } =
+        await import("../../macros/main.js");
+      expect(needsInsecureHttps("https://192.168.1.10/webapp/")).toBe(true);
+      expect(needsInsecureHttps("HTTPS://[fd00::1]:8443/webapp/")).toBe(true);
+      expect(needsInsecureHttps("https://example.com/webapp/")).toBe(false);
+      expect(needsInsecureHttps("http://192.168.1.10/webapp/")).toBe(false);
+      expect(getHostname("https://user@host.example:8443/x?y#z")).toBe(
+        "host.example",
+      );
+      expect(isIpAddress("10.0.0.1")).toBe(true);
+      expect(isIpAddress("10.0.0.com")).toBe(false);
+    });
   });
 });

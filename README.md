@@ -1,118 +1,133 @@
-<!-- title:start -->
-
 # Phonebook Web App
 
-<!-- title:end -->
+A Cisco RoomOS macro and companion web app that let you open a web-based custom phonebook on your device's OSD or Controller, with click-to-call and edit-before-dial support.
 
-<!-- description:start -->
+<p align="center">
+  <img src="assets/webapp-dark.png" alt="Phonebook web app" width="90%" />
+</p>
 
-Example phonebook web app for Cisco Collaboration Devices
-<!-- description:end -->
+## Overview
 
-A template for Cisco RoomOS (Webex) collaboration macros, paired with two static
-web apps published to GitHub Pages: a configuration **wizard** and an optional
-**web app** the macro can open in an on-device WebView for advanced features.
+### Open Phonebook Web App From Anywhere
 
-> The title, description, and URLs above are generated from
-> `project.config.json`. Run `npm run setup` to customise them.
+This project leverages a macro that saves a custom phonebook button on the home screen of a device's interactive OSD and Controller. Tapping it opens the phonebook web app on that interface, giving you "Web App" like functionality on your Room Navigators.
 
-## Live URLs
+```mermaid
+flowchart LR
 
-<!-- urls:start -->
+    %% Actor & Initial Interaction
+    User(["👤 User"]) -->|"Taps UI Extension"| Button
 
-- Wizard: https://wxsd-sales.github.io/phonebook-webapp/wizard/
-- Web app: https://wxsd-sales.github.io/phonebook-webapp/webapp/
+    %% RoomOS Device Boundary
+    subgraph RoomOS["RoomOS Device"]
+        direction TB
 
-<!-- urls:end -->
+        Button["UI Extension Button<br/><i>'Phone Book'</i>"]
+        Macro@{ shape: console, label: "RoomOS Macro" }
+        WebApp@{ shape: div-rect, label: "WebView<br/>(Phone Book App)" }
+        Call(["Call Placed<br/><i>xCommand Dial</i>"])
 
-## Quick start
+        %% Internal Device Event Flow
+        Button -->|"xFeedback: PanelClicked"| Macro
+        Macro -->|"1: xCommand UserInterface<br/>WebView Display"| WebApp
+        WebApp -->|"3: URL Hash / Event<br/>(Dial Target Selected)"| Macro
+        Macro -->|"4: Initiates call"| Call
+        Macro -.->|"5: xCommand UserInterface<br/>WebView Clear"| WebApp
+    end
 
-```sh
-npm install
-npm run setup   # names the project and rewrites the derived values
-npm test
+    %% External Web Server Infrastructure
+    subgraph WebServer["External Web Server"]
+        direction TB
+        AppFiles["Phone Book Web App<br/>(HTML / JS / CSS)"]
+        XML[("Directory XML<br/>(Phone Book Source)")]
+    end
+
+    %% Web Traffic / Asset Retrieval
+    WebApp -->|"2: Loads Web App"| AppFiles
+    WebApp <-->|"Fetches contacts"| XML
 ```
 
-`npm run setup` prompts for the project name, title, description, author, and
-GitHub org/repo (auto-detected from your git remote), writes
-`project.config.json`, then propagates those values into `package.json`, the
-macro, and both web apps. Re-run it any time; it is idempotent.
+### Dial From Anywhere
 
-## Project structure
+This project lets users click-to-call via the opened phonebook web app from any interface (OSD, Controller, etc.). This is accomplished by having the web app update the WebView's URL hash parameters (e.g. `#command=dial&number=2000`) when a user taps the call button. The companion macro included with this project monitors changes to the WebView URL, and when it detects a `dial` command in the URL, it dials the number specified in the `number` parameter using the `xapi.Command.Dial` xCommand.
+
+This approach works around the issue where the native Click to Call solution on RoomOS, which uses the SIP protocol handler (e.g. `sip://1234`), isn't supported in WebViews opened on the Controller interface.
+
+<p align="center">
+  <img src="assets/webapp-call-modal-dark.png" alt="Phonebook Call Modal" width="90%" />
+</p>
+
+Example URL Hash Parameters:
 
 ```text
-.
-├── __tests__/        # Jest tests (macros use jest-mock-xapi)
-├── .github/workflows # CI: test, deploy Pages, refresh screenshots
-├── assets/           # README screenshots (generated)
-├── macros/           # single-file RoomOS macros
-├── scripts/          # dev automation (setup, apply-config, serve, screenshots, deploy-macro)
-├── webapp/           # optional advanced-feature app (Pages: /webapp/)
-├── wizard/           # macro configuration app (Pages: /wizard/)
-│                     #   app-config.js is generated from project.config.json
-├── project.config.json         # single source of truth (see .schema.json)
-└── project.config.schema.json  # JSON Schema for project.config.json
+https://phonebook.example.com/#command=dial&number=2000
 ```
 
-## Installing the macro
+### Edit Number Before You Dial
 
-1. Open the device web interface: **Customization > Macro Editor**.
-2. Create a new macro and paste the contents of [`macros/main.js`](macros/main.js).
-3. Save and enable the macro.
+This web app lets a user edit a phonebook number before dialing. Tapping the **Edit dial** button opens an edit-number modal, and when ready, the user taps the Call button below the edit field to place the call.
 
-The `CONFIG` block in the macro is managed by `npm run apply-config`; use the
-[wizard](#live-urls) to generate an updated block (**Copy config**) or download a
-ready-to-import macro file (**Download macro**) after changing settings.
+<p align="center">
+  <img src="assets/webapp-edit-modal-dark.png" alt="Phonebook Edit Dial Modal" width="90%" />
+</p>
 
-### Deploy to a device over xAPI
+### Easy Configuration Using Wizard
 
-`npm run deploy:macro` uploads a macro straight to a device using
-[`jsxapi`](https://github.com/cisco-ce/jsxapi). Provide credentials via
-environment variables (never commit them):
+The project includes a web-based configuration wizard to help you configure the macro. The wizard lets you copy/paste the macro's config or download a copy of the macro with the configuration already set. It also lets you export the phonebook web app itself as a zip, so you can host it on your own internal web server (see [Host The Web App Yourself](#host-the-web-app-yourself)).
 
-```sh
-DEVICE_HOST=192.0.2.10 DEVICE_USERNAME=admin DEVICE_PASSWORD=... \
-  npm run deploy:macro
-```
+- **Button** - display name, icon, and where it appears (home screen, call
+  controls, etc.).
+- **Web App URL** - where the macro opens the web app from.
+- **Phonebook Root URL** - where the web app fetches its directory XML from.
+  Leave it blank to use the web app's bundled `phonebook/main.xml`, or set a
+  path relative to the web app or a full URL to host it elsewhere.
+- **Allow Insecure HTTPS** - for web servers with a self-signed certificate or
+  reached by IP address over HTTPS (see
+  [Host The Web App Yourself](#host-the-web-app-yourself)).
+- **Auto-Close On Inactivity** - optionally close the web view after a period
+  with no user interaction.
 
-Set `MACRO_FILE` to deploy a macro other than `macros/main.js`, and
-`MACRO_ACTIVATE=false` to upload without enabling it.
+  <a href="https://wxsd-sales.github.io/phonebook-webapp/wizard/#tab=configure">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="assets/wizard-dark.png">
+      <source media="(prefers-color-scheme: light)" srcset="assets/wizard-light.png">
+      <img alt="Configure tab of the configuration wizard" src="assets/wizard-light.png">
+    </picture>
+  </a>
 
-## Dev scripts
+### Host The Web App Yourself
 
-| Command                | Description                                                                                     |
-| ---------------------- | ----------------------------------------------------------------------------------------------- |
-| `npm run setup`        | Interactive rename; writes `project.config.json` and applies it                                 |
-| `npm run apply-config` | Re-apply `project.config.json` to all files                                                     |
-| `npm run serve`        | Serve the repo locally (wizard + webapp) with Node's http server, on `127.0.0.1` only           |
-| `npm run serve:lan`    | Same server, bound to all interfaces so devices on your LAN (e.g. a RoomOS device) can reach it |
-| `npm run screenshots`  | Capture `assets/*-light.png` / `*-dark.png` via headless Chrome                                 |
-| `npm run deploy:macro` | Upload a macro to a device over xAPI (see below)                                                |
-| `npm run lint`         | Lint with ESLint                                                                                |
-| `npm run format`       | Format with Prettier (`npm run format:check` to verify)                                         |
-| `npm test`             | Run the Jest suite                                                                              |
+The wizard's [**Export Web App**](https://wxsd-sales.github.io/phonebook-webapp/wizard/#tab=webapp) tab lets you download a copy of the phonebook web app as a static bundle (`index.html`, CSS and JavaScript) in a `phonebook-webapp.zip`. An admin can unzip it onto an internal web server, then set the macro's **Web app URL** to the FQDN and path of that copy (e.g. `https://phonebook.example.com/phonebook/`) and export the macro as usual. No server-side code is required, just HTTPS and a static file host reachable by your devices.
 
-`npm run serve` / `serve:lan` respect `PORT` (default `8080`) and `HOST` env
-vars if you need to override them further, e.g. `HOST=192.0.2.10 npm run
-serve`. When bound to all interfaces, the server prints the LAN-reachable
-URL(s) alongside the loopback one - use that to point a device's WebView at
-your machine directly instead of deploying to GitHub Pages first.
+If your internal web server has no trusted certificate (for example it is reached by IP address, or uses a self-signed certificate), enable **Allow insecure HTTPS** on the wizard's Configure tab. The macro then adds the web app's hostname or IP to the device's WebEngine allow list (`xapi.Command.WebEngine.AllowInsecureHttps.Add`) and opens the web app with `AllowInsecureHttps` set. If the Web app URL is an `https://` address using an IP and this option is off, the macro shows an on-screen alert when it starts and does not run until the config is fixed.
 
-Screenshots use a headless Chrome/Chromium already installed on your machine.
-Set `CHROME_BIN` to override binary detection.
+A toggle controls whether the example phonebook directory (`phonebook/main.xml` and its linked sample XML files) is included. Turn it off to export only the raw web app assets, then host your own directory XML and set **Phonebook root URL** to it.
 
-<!-- Screenshots are regenerated by .github/workflows/screenshots.yml -->
+<p align="center">
+  <a href="https://wxsd-sales.github.io/phonebook-webapp/wizard/#tab=webapp">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="assets/wizard-webapp-export-dark.png">
+      <source media="(prefers-color-scheme: light)" srcset="assets/wizard-webapp-export-light.png">
+      <img alt="Export Web App tab of the configuration wizard" src="assets/wizard-webapp-export-light.png" width="90%">
+    </picture>
+  </a>
+</p>
 
-|         | Light                                       | Dark                                      |
-| ------- | ------------------------------------------- | ----------------------------------------- |
-| Wizard  | ![Wizard (light)](assets/wizard-light.png)  | ![Wizard (dark)](assets/wizard-dark.png)  |
-| Web app | ![Web app (light)](assets/webapp-light.png) | ![Web app (dark)](assets/webapp-dark.png) |
+## Demo
 
-## Deployment
+View the GitHub-hosted instance of the phonebook web app here: https://wxsd-sales.github.io/phonebook-webapp/webapp/
 
-Pushing to `main` triggers `deploy-pages.yml`, which publishes `wizard/` and
-`webapp/` to GitHub Pages. Enable Pages with the **GitHub Actions** source in
-your repository settings (Settings > Pages).
+Try out this solution on a real Cisco RoomOS device by downloading a copy of the macro with its default config from the wizard's [Export Macro](https://wxsd-sales.github.io/phonebook-webapp/wizard/#tab=macro) tab. With the default settings the macro opens the GitHub Pages hosted demo phonebook web app and its sample phonebook XML, so the device only needs internet access to reach `wxsd-sales.github.io`.
+
+<p align="center">
+  <a href="https://wxsd-sales.github.io/phonebook-webapp/wizard/#tab=macro">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="assets/wizard-macro-export-dark.png">
+      <source media="(prefers-color-scheme: light)" srcset="assets/wizard-macro-export-light.png">
+      <img alt="Export Macro tab of the configuration wizard" src="assets/wizard-macro-export-light.png" width="90%">
+    </picture>
+  </a>
+</p>
 
 ## License
 

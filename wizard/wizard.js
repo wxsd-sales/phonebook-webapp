@@ -1,10 +1,34 @@
-import { buildSnippet, injectConfig } from "./snippet.js";
+import {
+  buildSnippet,
+  getHostname,
+  injectConfig,
+  needsInsecureHttps,
+} from "./snippet.js";
+import { collectWebappFiles } from "./webapp-bundle.js";
+import { createZip } from "./zip.js";
 
-const config = window.APP_CONFIG ?? {};
+// Defaults the wizard form starts with, and the project details it displays.
+const config = {
+  name: "phonebook-webapp",
+  title: "Phonebook Web App",
+  repoUrl: "https://github.com/wxsd-sales/phonebook-webapp",
+  webappUrl: "https://wxsd-sales.github.io/phonebook-webapp/webapp/",
+  buttonName: "Phone Book",
+  buttonIcon: "Handset",
+  buttonLocation: "HomeScreen",
+  phonebookRootUrl: "",
+  autoCloseSeconds: 0,
+  allowInsecureHttps: false,
+};
 
 // The macro source is published alongside the wizard on GitHub Pages so the
 // "Download macro" action can fetch it and inject the configured values.
 const MACRO_SOURCE_URL = "../macros/main.js";
+
+// The web app is published next to the wizard; the "Export Web App" tab
+// bundles it (from here) into a zip for self-hosting.
+const WEBAPP_BASE_URL = new URL("../webapp/", window.location.href).href;
+const WEBAPP_BUNDLE_FOLDER = "phonebook-webapp";
 
 const BUTTON_ICONS = [
   "Blinds",
@@ -40,7 +64,7 @@ const BUTTON_LOCATIONS = [
   "Hidden",
 ];
 
-/* Header: product name and source-code link derived from APP_CONFIG. */
+/* Header: product name and source-code link. */
 (function initHeader() {
   const product = document.getElementById("app-product");
   const sourceLink = document.getElementById("source-link");
@@ -64,6 +88,10 @@ const BUTTON_LOCATIONS = [
   const webappUrlInput = document.getElementById("webapp-url");
   const phonebookRootUrlInput = document.getElementById("phonebook-root-url");
   const phonebookRootStatus = document.getElementById("phonebook-root-status");
+  const webappUrlStatus = document.getElementById("webapp-url-status");
+  const allowInsecureHttpsInput = document.getElementById(
+    "allow-insecure-https",
+  );
   const autoCloseEnabledInput = document.getElementById("auto-close-enabled");
   const autoCloseSecondsInput = document.getElementById("auto-close-seconds");
   const autoCloseSecondsField = document.getElementById(
@@ -81,6 +109,8 @@ const BUTTON_LOCATIONS = [
     !webappUrlInput ||
     !phonebookRootUrlInput ||
     !phonebookRootStatus ||
+    !webappUrlStatus ||
+    !allowInsecureHttpsInput ||
     !autoCloseEnabledInput ||
     !autoCloseSecondsInput ||
     !autoCloseSecondsField ||
@@ -117,6 +147,7 @@ const BUTTON_LOCATIONS = [
   );
   webappUrlInput.value = config.webappUrl ?? "";
   phonebookRootUrlInput.value = config.phonebookRootUrl ?? "";
+  allowInsecureHttpsInput.checked = config.allowInsecureHttps === true;
   autoCloseEnabledInput.checked = Boolean(config.autoCloseSeconds);
   autoCloseSecondsInput.value = config.autoCloseSeconds
     ? String(config.autoCloseSeconds)
@@ -139,6 +170,7 @@ const BUTTON_LOCATIONS = [
       buttonLocation: buttonLocationInput.value,
       phonebookRootUrl: phonebookRootUrlInput.value.trim(),
       autoCloseSeconds,
+      allowInsecureHttps: allowInsecureHttpsInput.checked,
     };
   };
 
@@ -226,7 +258,35 @@ const BUTTON_LOCATIONS = [
     return false;
   };
 
+  // An https:// web app addressed by IP can't have a valid certificate, so
+  // the macro refuses to run (and shows an on-screen error) unless "Allow
+  // insecure HTTPS" is on. Warn here rather than block, since it's fixed by
+  // flipping the toggle. Other https:// URLs may still be served with an
+  // untrusted certificate, which can't be detected from here, so the toggle
+  // is always available and only mentioned in the hint.
+  const updateInsecureHttpsNotice = () => {
+    const url = webappUrlInput.value.trim();
+    let message = "";
+    let kind = "";
+    if (needsInsecureHttps(url)) {
+      const host = getHostname(url);
+      if (allowInsecureHttpsInput.checked) {
+        message = `${host} is an IP address served over HTTPS. Allow insecure HTTPS is on, so the macro will add it to the device's WebEngine allow list.`;
+      } else {
+        message = `${host} is an IP address served over HTTPS, which can't have a certificate the device trusts. Turn on "Allow insecure HTTPS" below, otherwise the macro will show an error on the device and won't work.`;
+        kind = "warning";
+      }
+    }
+    webappUrlStatus.textContent = message;
+    if (kind) {
+      webappUrlStatus.dataset.kind = kind;
+    } else {
+      delete webappUrlStatus.dataset.kind;
+    }
+  };
+
   const updatePreview = () => {
+    updateInsecureHttpsNotice();
     const blocked = validatePhonebookRoot();
     // Assign via textContent (never innerHTML) so user input is treated as text.
     output.textContent = buildSnippet(getValues());
@@ -239,6 +299,7 @@ const BUTTON_LOCATIONS = [
   buttonLocationInput.addEventListener("change", updatePreview);
   webappUrlInput.addEventListener("input", updatePreview);
   phonebookRootUrlInput.addEventListener("input", updatePreview);
+  allowInsecureHttpsInput.addEventListener("change", updatePreview);
 
   autoCloseEnabledInput.addEventListener("change", () => {
     autoCloseSecondsField.hidden = !autoCloseEnabledInput.checked;
@@ -331,6 +392,100 @@ const BUTTON_LOCATIONS = [
   }
 })();
 
+/* Export Web App tab: zip the static web app for self-hosting. */
+(function initWebappExport() {
+  const includeSamplesInput = document.getElementById("include-samples");
+  const includeSamplesStatus = document.getElementById(
+    "include-samples-status",
+  );
+  const contents = document.getElementById("webapp-contents");
+  const downloadButton = document.getElementById("download-webapp-button");
+  const status = document.getElementById("webapp-export-status");
+  const phonebookRootUrlInput = document.getElementById("phonebook-root-url");
+
+  if (!includeSamplesInput || !contents || !downloadButton || !status) {
+    return;
+  }
+
+  const setStatus = (message, kind = "") => {
+    status.textContent = message;
+    if (kind) {
+      status.dataset.kind = kind;
+    } else {
+      delete status.dataset.kind;
+    }
+  };
+
+  const CORE_LISTING = [
+    "index.html",
+    "phonebook.css",
+    "phonebook.js",
+    "favicon.svg",
+  ];
+
+  const updateContents = () => {
+    const lines = [`${WEBAPP_BUNDLE_FOLDER}/`];
+    const entries = [...CORE_LISTING];
+    if (includeSamplesInput.checked) entries.push("phonebook/  (sample XML)");
+    entries.forEach((entry, i) => {
+      lines.push(`${i === entries.length - 1 ? "└─" : "├─"} ${entry}`);
+    });
+    contents.textContent = lines.join("\n");
+
+    const needsRoot =
+      !includeSamplesInput.checked &&
+      !(phonebookRootUrlInput?.value ?? "").trim();
+    includeSamplesStatus.textContent = needsRoot
+      ? "Without the example directory you'll need to host your own directory XML and set the Phonebook root URL on the Configure tab."
+      : "";
+    if (needsRoot) {
+      includeSamplesStatus.dataset.kind = "warning";
+    } else {
+      delete includeSamplesStatus.dataset.kind;
+    }
+  };
+
+  includeSamplesInput.addEventListener("change", updateContents);
+  phonebookRootUrlInput?.addEventListener("input", updateContents);
+  updateContents();
+
+  downloadButton.addEventListener("click", async () => {
+    setStatus("Preparing bundle…");
+    downloadButton.disabled = true;
+    try {
+      const files = await collectWebappFiles(WEBAPP_BASE_URL, {
+        includeSamples: includeSamplesInput.checked,
+      });
+      const zip = createZip(
+        files.map((file) => ({
+          path: `${WEBAPP_BUNDLE_FOLDER}/${file.path}`,
+          data: file.data,
+        })),
+      );
+      const fileName = `${WEBAPP_BUNDLE_FOLDER}.zip`;
+      const url = URL.createObjectURL(
+        new Blob([zip], { type: "application/zip" }),
+      );
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setStatus(`Downloaded ${fileName} (${files.length} files).`, "success");
+    } catch (error) {
+      console.error(error);
+      setStatus(
+        "Could not load the web app files from this site. The web app may not be published alongside the wizard.",
+        "error",
+      );
+    } finally {
+      downloadButton.disabled = false;
+    }
+  });
+})();
+
 /*
  * Theme selector: toggles the menu and applies System / Light / Dark themes.
  * Light/Dark persist via the URL hash (read by the inline boot script), while
@@ -394,15 +549,20 @@ const BUTTON_LOCATIONS = [
   };
 
   const setChoice = (choice) => {
+    const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     if (choice === "system") {
-      history.replaceState(
-        null,
-        "",
-        window.location.pathname + window.location.search,
-      );
+      params.delete("theme");
     } else {
-      window.location.hash = "theme=" + choice;
+      params.set("theme", choice);
     }
+    const hash = params.toString();
+    history.replaceState(
+      null,
+      "",
+      window.location.pathname +
+        window.location.search +
+        (hash ? `#${hash}` : ""),
+    );
     applyTheme(choice);
     syncButton(choice);
   };
@@ -459,6 +619,35 @@ const BUTTON_LOCATIONS = [
     return;
   }
 
+  // Friendly "#tab=" values, mapped to the panel ids. The panel ids
+  // themselves (general / export / hosting) are accepted too.
+  const TAB_ALIASES = {
+    configure: "general",
+    macro: "export",
+    webapp: "hosting",
+  };
+  const aliasFor = (panelId) =>
+    Object.keys(TAB_ALIASES).find((key) => TAB_ALIASES[key] === panelId);
+
+  const activateById = (id) => {
+    const tab = tabs.find(
+      (current) => current.dataset.tabTarget === (TAB_ALIASES[id] ?? id),
+    );
+    if (tab) activate(tab);
+  };
+
+  // Keeps "#tab=" in the URL in step with the open tab (preserving "theme"),
+  // so the address bar is always a shareable link to the current tab.
+  const syncHash = (tab) => {
+    const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    params.set("tab", aliasFor(tab.dataset.tabTarget) ?? tab.dataset.tabTarget);
+    history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${window.location.search}#${params}`,
+    );
+  };
+
   const activate = (tab) => {
     tabs.forEach((current) => {
       const selected = current === tab;
@@ -471,8 +660,32 @@ const BUTTON_LOCATIONS = [
     });
   };
 
+  // In-page links (e.g. from the hosting steps) that jump to another tab.
+  document.querySelectorAll("[data-tab-link]").forEach((link) => {
+    link.addEventListener("click", () => {
+      activateById(link.dataset.tabLink);
+      const target = document.getElementById(`tab-${link.dataset.tabLink}`);
+      if (target) syncHash(target);
+      document.getElementById(`tab-${link.dataset.tabLink}`)?.focus();
+    });
+  });
+
+  // "#tab=configure|macro|webapp" opens a tab directly (shareable links and
+  // documentation screenshots).
+  const readHashTab = () =>
+    new URLSearchParams(window.location.hash.replace(/^#/, "")).get("tab");
+  const initialTab = readHashTab();
+  if (initialTab) activateById(initialTab);
+  window.addEventListener("hashchange", () => {
+    const requested = readHashTab();
+    if (requested) activateById(requested);
+  });
+
   tabs.forEach((tab, index) => {
-    tab.addEventListener("click", () => activate(tab));
+    tab.addEventListener("click", () => {
+      activate(tab);
+      syncHash(tab);
+    });
     tab.addEventListener("keydown", (event) => {
       if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") {
         return;
@@ -482,6 +695,7 @@ const BUTTON_LOCATIONS = [
       const next = tabs[(index + direction + tabs.length) % tabs.length];
       next.focus();
       activate(next);
+      syncHash(next);
     });
   });
 })();
