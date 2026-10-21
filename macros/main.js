@@ -63,20 +63,86 @@ const PANEL_ID = `${MACRO_NAME}-open`;
 // macro closes the WebView and places the call.
 const DIAL_CLOSE_DELAY_MS = 1000;
 
-// The WebView.Display/Clear target this macro currently has open, either
-// `{ PeripheralId }` or `{ Target: "OSD" }`. Null when no directory is open.
-let activeWebView = null;
+// The WebViews this macro currently has open, one entry per screen. `target`
+// is what WebView.Display/Clear take (`{ PeripheralId }` or `{ Target }`).
+// `peripheralId` is kept for entries opened by Target so two screens can still
+// be told apart when a status update reports which peripheral it came from.
+let activeWebViews = [];
 
-function webViewTargetFor(event) {
-  return event.PeripheralId
-    ? { PeripheralId: event.PeripheralId }
-    : { Target: "OSD" };
+// Some RoomOS versions report a PeripheralId on the panel click event but
+// WebView.Display only accepts it from this version onwards. Below it, the
+// click's Origin ("OSD", "Controller", ...) is used as the Target instead.
+const MIN_PERIPHERAL_VERSION = [26, 5, 1];
+
+// Extracts [major, minor, patch] from a RoomOS version string such as
+// "ce26.10.1.4.2a75dc140e6". Tolerates a missing/odd prefix ("ce", "RoomOS ",
+// "roomos-") and a missing patch number. Returns null if it can't be parsed.
+function parseRoomOsVersion(version) {
+  if (typeof version !== "string") return null;
+  const match = version.match(/(?:^|[^0-9])(\d+)\.(\d+)(?:\.(\d+))?/);
+  if (!match) return null;
+  return [Number(match[1]), Number(match[2]), Number(match[3] || 0)];
 }
 
-function sameTarget(a, b) {
-  return a.PeripheralId
-    ? a.PeripheralId === b.PeripheralId
-    : b.Target === "OSD" && !b.PeripheralId;
+// True if the version is >= MIN_PERIPHERAL_VERSION. An unparseable version is
+// assumed to be current so newer, unknown formats keep the default behavior.
+function supportsPeripheralTarget(version) {
+  const parsed = parseRoomOsVersion(version);
+  if (!parsed) return true;
+  for (let i = 0; i < MIN_PERIPHERAL_VERSION.length; i++) {
+    if (parsed[i] !== MIN_PERIPHERAL_VERSION[i]) {
+      return parsed[i] > MIN_PERIPHERAL_VERSION[i];
+    }
+  }
+  return true;
+}
+
+async function getRoomOsVersion() {
+  try {
+    return await xapi.Status.SystemUnit.Software.Version.get();
+  } catch (error) {
+    console.warn(`${MACRO_NAME}: could not read RoomOS version`, error);
+    return null;
+  }
+}
+
+async function webViewTargetFor(event) {
+  if (!event.PeripheralId) return { Target: "OSD" };
+  if (event.Origin && !supportsPeripheralTarget(await getRoomOsVersion())) {
+    return { Target: event.Origin };
+  }
+  return { PeripheralId: event.PeripheralId };
+}
+
+// Whether a WebView status/Cleared payload (`info`) belongs to the active
+// entry `view`. A payload with neither field is taken to be the OSD.
+function isSameWebView(view, info) {
+  const peripheralId = view.target.PeripheralId || view.peripheralId;
+  if (peripheralId && info.PeripheralId)
+    return peripheralId === info.PeripheralId;
+  if (view.target.PeripheralId) return false;
+  if (!info.Target && info.PeripheralId) return false;
+  return (info.Target || "OSD") === view.target.Target;
+}
+
+// Status updates only carry the fields that changed (often just id + URL), so
+// fill in Target/PeripheralId from the full WebView status when missing.
+async function describeWebView(webview) {
+  if (webview.Target || webview.PeripheralId) return webview;
+  try {
+    const all = await xapi.Status.UserInterface.WebView.get();
+    const full = (Array.isArray(all) ? all : [all]).find(
+      (item) => item && String(item.id) === String(webview.id),
+    );
+    return { ...full, ...webview };
+  } catch (error) {
+    console.warn(`${MACRO_NAME}: could not read WebView status`, error);
+    return webview;
+  }
+}
+
+function removeActiveWebView(view) {
+  activeWebViews = activeWebViews.filter((item) => item !== view);
 }
 
 // Builds a "key=value&key2=value2" string from an object, skipping falsy
@@ -150,7 +216,7 @@ function showConfigError() {
   );
 }
 
-async function openWebApp(target) {
+async function openWebApp(target, peripheralId) {
   await xapi.Command.UserInterface.WebView.Display({
     ...target,
     Url: buildWebAppUrl(AUTO_CLOSE_SECONDS, PHONEBOOK_ROOT_URL),
@@ -158,7 +224,12 @@ async function openWebApp(target) {
     Mode: "Modal",
     ...(ALLOW_INSECURE_HTTPS ? { AllowInsecureHttps: "True" } : {}),
   });
-  activeWebView = target;
+  // Re-opening on a screen replaces its view rather than tracking it twice.
+  const info = target.PeripheralId
+    ? target
+    : { ...target, PeripheralId: peripheralId };
+  activeWebViews = activeWebViews.filter((view) => !isSameWebView(view, info));
+  activeWebViews.push({ target, peripheralId });
 }
 
 async function closeWebView(target) {
@@ -200,21 +271,26 @@ function parseWebAppCommand(url) {
 
 function onPanelClicked(event) {
   if (event.PanelId !== PANEL_ID) return;
-  openWebApp(webViewTargetFor(event)).catch((error) =>
-    console.error(`${MACRO_NAME}: failed to open web app`, error),
-  );
+  webViewTargetFor(event)
+    .then((target) => openWebApp(target, event.PeripheralId))
+    .catch((error) =>
+      console.error(`${MACRO_NAME}: failed to open web app`, error),
+    );
 }
 
-function onWebViewChanged(webview) {
-  if (!activeWebView || !webview.URL) return;
+async function onWebViewChanged(webview) {
+  if (!activeWebViews.length || !webview.URL) return;
   if (!webview.URL.startsWith(WEBAPP_URL)) return;
 
   const request = parseWebAppCommand(webview.URL);
   if (!request) return;
 
-  const target = activeWebView;
-  activeWebView = null; // stop reacting to further updates for this session
+  const info = await describeWebView(webview);
+  const view = activeWebViews.find((item) => isSameWebView(item, info));
+  if (!view) return;
+  removeActiveWebView(view); // stop reacting to further updates for this one
 
+  const { target } = view;
   if (request.command === "exit") {
     closeWebView(target);
     return;
@@ -229,9 +305,7 @@ function onWebViewChanged(webview) {
 }
 
 function onWebViewCleared(event) {
-  if (activeWebView && sameTarget(activeWebView, event)) {
-    activeWebView = null;
-  }
+  activeWebViews = activeWebViews.filter((view) => !isSameWebView(view, event));
 }
 
 /**
@@ -305,6 +379,8 @@ export {
   onPanelClicked,
   onWebViewChanged,
   onWebViewCleared,
+  parseRoomOsVersion,
   parseWebAppCommand,
+  supportsPeripheralTarget,
   webViewTargetFor,
 };

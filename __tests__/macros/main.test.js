@@ -116,6 +116,252 @@ describe("macros/main.js", () => {
     );
   });
 
+  describe("RoomOS version handling", () => {
+    it("parses version strings in various formats", async () => {
+      const { parseRoomOsVersion } = await import("../../macros/main.js");
+
+      expect(parseRoomOsVersion("ce26.10.1.4.2a75dc140e6")).toEqual([
+        26, 10, 1,
+      ]);
+      expect(parseRoomOsVersion("ce26.5.1.0.abcdef01234")).toEqual([26, 5, 1]);
+      expect(parseRoomOsVersion("ce11.2.1.0.abc123")).toEqual([11, 2, 1]);
+      expect(parseRoomOsVersion("RoomOS 11.27.3.0")).toEqual([11, 27, 3]);
+      expect(parseRoomOsVersion("roomos-26.5")).toEqual([26, 5, 0]);
+      expect(parseRoomOsVersion("26.5.1")).toEqual([26, 5, 1]);
+      expect(parseRoomOsVersion("")).toBeNull();
+      expect(parseRoomOsVersion("unknown")).toBeNull();
+      expect(parseRoomOsVersion(undefined)).toBeNull();
+      expect(parseRoomOsVersion(null)).toBeNull();
+    });
+
+    it("supports the peripheral target from 26.5.1 onwards only", async () => {
+      const { supportsPeripheralTarget } = await import("../../macros/main.js");
+
+      expect(supportsPeripheralTarget("ce26.5.1.0.abcdef01234")).toBe(true);
+      expect(supportsPeripheralTarget("ce26.5.2.0.abcdef01234")).toBe(true);
+      expect(supportsPeripheralTarget("ce26.6.0.0.abcdef01234")).toBe(true);
+      expect(supportsPeripheralTarget("ce26.10.1.4.2a75dc140e6")).toBe(true);
+      expect(supportsPeripheralTarget("ce27.1.0.0.abcdef01234")).toBe(true);
+      expect(supportsPeripheralTarget("ce26.5.0.9.abcdef01234")).toBe(false);
+      expect(supportsPeripheralTarget("ce26.4.9.0.abcdef01234")).toBe(false);
+      expect(supportsPeripheralTarget("ce25.12.0.0.abcdef01234")).toBe(false);
+      expect(supportsPeripheralTarget("ce11.27.3.0.abcdef01234")).toBe(false);
+      expect(supportsPeripheralTarget("ce9.15.3.22.abcdef01234")).toBe(false);
+      expect(supportsPeripheralTarget("26.5")).toBe(false);
+    });
+
+    it("treats unparseable or missing versions as current", async () => {
+      const { supportsPeripheralTarget } = await import("../../macros/main.js");
+
+      expect(supportsPeripheralTarget("unknown")).toBe(true);
+      expect(supportsPeripheralTarget("")).toBe(true);
+      expect(supportsPeripheralTarget(undefined)).toBe(true);
+    });
+
+    async function clickWithVersion(version, event) {
+      const { default: xapi } = await import("xapi");
+      const { PANEL_ID } = await import("../../macros/main.js");
+      xapi.Status.SystemUnit.Software.Version.set(version);
+
+      xapi.Event.UserInterface.Extensions.Panel.Clicked.emit({
+        PanelId: PANEL_ID,
+        ...event,
+      });
+      await tick();
+      await tick();
+      return xapi;
+    }
+
+    const peripheralClick = {
+      Origin: "Controller",
+      PeripheralId: "AA:BB:CC:DD:EE:FF",
+    };
+
+    it("uses the click Origin as the target below 26.5.1", async () => {
+      const xapi = await clickWithVersion(
+        "ce26.4.1.0.abcdef01234",
+        peripheralClick,
+      );
+
+      const display = xapi.Command.UserInterface.WebView.Display;
+      expect(display).toHaveBeenCalledWith(
+        expect.objectContaining({ Target: "Controller" }),
+      );
+      expect(display).not.toHaveBeenCalledWith(
+        expect.objectContaining({ PeripheralId: expect.anything() }),
+      );
+    });
+
+    it.each(["ce26.5.1.0.abcdef01234", "ce26.10.1.4.2a75dc140e6"])(
+      "uses the PeripheralId as the target on %s",
+      async (version) => {
+        const xapi = await clickWithVersion(version, peripheralClick);
+
+        const display = xapi.Command.UserInterface.WebView.Display;
+        expect(display).toHaveBeenCalledWith(
+          expect.objectContaining({ PeripheralId: "AA:BB:CC:DD:EE:FF" }),
+        );
+        expect(display).not.toHaveBeenCalledWith(
+          expect.objectContaining({ Target: expect.anything() }),
+        );
+      },
+    );
+
+    it("keeps using the PeripheralId when the version is unparseable", async () => {
+      const xapi = await clickWithVersion("unknown", peripheralClick);
+
+      expect(xapi.Command.UserInterface.WebView.Display).toHaveBeenCalledWith(
+        expect.objectContaining({ PeripheralId: "AA:BB:CC:DD:EE:FF" }),
+      );
+    });
+
+    it("keeps using OSD on old versions when there is no PeripheralId", async () => {
+      const xapi = await clickWithVersion("ce11.2.1.0.abc123", {
+        Origin: "OSD",
+      });
+
+      expect(xapi.Command.UserInterface.WebView.Display).toHaveBeenCalledWith(
+        expect.objectContaining({ Target: "OSD" }),
+      );
+    });
+
+    it("closes the Origin-targeted web view on old versions", async () => {
+      const xapi = await clickWithVersion(
+        "ce26.4.1.0.abcdef01234",
+        peripheralClick,
+      );
+      const { WEBAPP_URL } = await import("../../macros/main.js");
+
+      xapi.Status.UserInterface.WebView[1].Target.set("Controller");
+      xapi.Status.UserInterface.WebView[1].URL.set(
+        `${WEBAPP_URL}#command=exit`,
+      );
+      await tick();
+
+      expect(xapi.Command.UserInterface.WebView.Clear).toHaveBeenCalledWith({
+        Target: "Controller",
+      });
+    });
+  });
+
+  describe("OSD and controller web views open together", () => {
+    const controllerClick = {
+      Origin: "Controller",
+      PeripheralId: "AA:BB:CC:DD:EE:FF",
+    };
+
+    async function openBoth(version = "ce26.10.1.4.2a75dc140e6") {
+      const { default: xapi } = await import("xapi");
+      const macro = await import("../../macros/main.js");
+      xapi.Status.SystemUnit.Software.Version.set(version);
+      for (const event of [{ Origin: "OSD" }, controllerClick]) {
+        xapi.Event.UserInterface.Extensions.Panel.Clicked.emit({
+          PanelId: macro.PANEL_ID,
+          ...event,
+        });
+        await tick();
+        await tick();
+      }
+      return { xapi, ...macro };
+    }
+
+    function exitOn(xapi, id, WEBAPP_URL, field, value) {
+      xapi.Status.UserInterface.WebView[id][field].set(value);
+      xapi.Status.UserInterface.WebView[id].URL.set(
+        `${WEBAPP_URL}#command=exit`,
+      );
+      return tick();
+    }
+
+    it("exits each view independently, controller first then OSD", async () => {
+      const { xapi, WEBAPP_URL } = await openBoth();
+      const clear = xapi.Command.UserInterface.WebView.Clear;
+
+      await exitOn(
+        xapi,
+        2,
+        WEBAPP_URL,
+        "PeripheralId",
+        controllerClick.PeripheralId,
+      );
+      expect(clear).toHaveBeenCalledTimes(1);
+      expect(clear).toHaveBeenLastCalledWith({
+        PeripheralId: controllerClick.PeripheralId,
+      });
+
+      await exitOn(xapi, 1, WEBAPP_URL, "Target", "OSD");
+      expect(clear).toHaveBeenCalledTimes(2);
+      expect(clear).toHaveBeenLastCalledWith({ Target: "OSD" });
+    });
+
+    it("exits each view independently, OSD first then controller", async () => {
+      const { xapi, WEBAPP_URL } = await openBoth();
+      const clear = xapi.Command.UserInterface.WebView.Clear;
+
+      await exitOn(xapi, 1, WEBAPP_URL, "Target", "OSD");
+      expect(clear).toHaveBeenCalledTimes(1);
+      expect(clear).toHaveBeenLastCalledWith({ Target: "OSD" });
+
+      await exitOn(
+        xapi,
+        2,
+        WEBAPP_URL,
+        "PeripheralId",
+        controllerClick.PeripheralId,
+      );
+      expect(clear).toHaveBeenCalledTimes(2);
+      expect(clear).toHaveBeenLastCalledWith({
+        PeripheralId: controllerClick.PeripheralId,
+      });
+    });
+
+    it("keeps tracking the other view when one is cleared by the user", async () => {
+      const { xapi, WEBAPP_URL } = await openBoth();
+      const clear = xapi.Command.UserInterface.WebView.Clear;
+
+      xapi.Event.UserInterface.WebView.Cleared.emit({ Target: "OSD" });
+
+      await exitOn(
+        xapi,
+        2,
+        WEBAPP_URL,
+        "PeripheralId",
+        controllerClick.PeripheralId,
+      );
+      expect(clear).toHaveBeenCalledWith({
+        PeripheralId: controllerClick.PeripheralId,
+      });
+    });
+
+    it("resolves the screen from the WebView status when an update only has id and URL", async () => {
+      const { xapi, WEBAPP_URL, onWebViewChanged } = await openBoth();
+      const clear = xapi.Command.UserInterface.WebView.Clear;
+      xapi.Status.UserInterface.WebView[2].PeripheralId.set(
+        controllerClick.PeripheralId,
+      );
+
+      await onWebViewChanged({ id: "2", URL: `${WEBAPP_URL}#command=exit` });
+
+      expect(clear).toHaveBeenCalledTimes(1);
+      expect(clear).toHaveBeenCalledWith({
+        PeripheralId: controllerClick.PeripheralId,
+      });
+    });
+
+    it("tracks the OSD and an Origin-targeted controller separately on old versions", async () => {
+      const { xapi, WEBAPP_URL } = await openBoth("ce26.4.1.0.abcdef01234");
+      const clear = xapi.Command.UserInterface.WebView.Clear;
+
+      await exitOn(xapi, 2, WEBAPP_URL, "Target", "Controller");
+      expect(clear).toHaveBeenCalledTimes(1);
+      expect(clear).toHaveBeenLastCalledWith({ Target: "Controller" });
+
+      await exitOn(xapi, 1, WEBAPP_URL, "Target", "OSD");
+      expect(clear).toHaveBeenCalledTimes(2);
+      expect(clear).toHaveBeenLastCalledWith({ Target: "OSD" });
+    });
+  });
+
   it("dials and closes the OSD web view after the dial-close delay", async () => {
     const { default: xapi } = await import("xapi");
     const { PANEL_ID, WEBAPP_URL, DIAL_CLOSE_DELAY_MS } =
