@@ -8,7 +8,7 @@ import xapi from "xapi";
  *           wimills@cisco.com
  *           Cisco Systems
  *
- * Version:  1.0.0
+ * Version:  1.0.1
  * Released: 2026-10-06
  *
  * Adds a "Phone Book" button to the home screen that opens the project's web
@@ -53,7 +53,7 @@ const BUTTON_LOCATION = "HomeScreen";
 const MACRO_NAME = "phonebook-webapp";
 const WEBAPP_URL = "https://wxsd-sales.github.io/phonebook-webapp/webapp/";
 const PHONEBOOK_ROOT_URL = "";
-const AUTO_CLOSE_SECONDS = 0;
+const AUTO_CLOSE_SECONDS = 60;
 const ALLOW_INSECURE_HTTPS = false;
 // CONFIG:end
 

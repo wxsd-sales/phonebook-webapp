@@ -96,7 +96,7 @@ mkdirSync(OUT_DIR, { recursive: true });
 // The wizard's Export Macro / Export Web App tabs are opened via
 // "#tab=macro" / "#tab=webapp".
 const targets = [
-  { path: "/wizard/", name: "wizard", themes: ["light", "dark"], height: 1020 },
+  { path: "/wizard/", name: "wizard", themes: ["light", "dark"], height: 1085 },
   {
     path: "/wizard/",
     name: "wizard-macro-export",
@@ -109,7 +109,7 @@ const targets = [
     name: "wizard-webapp-export",
     themes: ["light", "dark"],
     tab: "webapp",
-    height: 650,
+    height: 640,
   },
 ];
 if (existsSync(join(ROOT, "webapp", "index.html"))) {

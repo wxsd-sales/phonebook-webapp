@@ -17,7 +17,7 @@ const config = {
   buttonIcon: "Handset",
   buttonLocation: "HomeScreen",
   phonebookRootUrl: "",
-  autoCloseSeconds: 0,
+  autoCloseSeconds: 60,
   allowInsecureHttps: false,
 };
 
